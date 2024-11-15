@@ -1,0 +1,25 @@
+[tool.poetry]
+name = "remail"
+version = "0.1.0"
+description = ""
+authors = ["Your Name <you@example.com>"]
+readme = "README.md"
+license = "GPL-3.0-or-later"
+packages = [{include = "src"}]
+
+[tool.poetry.dependencies]
+python = "^3.12"
+duckdb = "^1.1.3"
+sqlmodel = "^0.0.22"
+duckdb-engine = "^0.13.5"
+exchangelib = "^5.5.0"
+llama-index = "^0.11.22"
+streamlit = "^1.40.0"
+imapclient = "^3.0.1"
+
+[tool.poetry.scripts]
+my-script = "src.frontend:start"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
