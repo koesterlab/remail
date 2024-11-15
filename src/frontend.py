@@ -1,12 +1,19 @@
 import streamlit as st
+import gettext
+_=gettext.gettext
+ngettext=gettext.ngettext
 
+# Put _() around all strings that should be translated later on
+# ngettext changes everything that is in plural. example ngettext("{0} unread msg","{0} unread msges", "int for the counter")
 # Example data
+
 emails_data = {
     "sender1@example.com": [
         {"type": "sent", "message": "Hello! How are you?"},
         {"type": "received", "message": "I'm good, thanks! How about you?"},
         {"type": "sent", "message": "Doing great, thanks for asking!"},
     ],
+
     "sender2@example.com": [
         {"type": "received", "message": "Don't forget our meeting tomorrow."},
         {"type": "sent", "message": "Thanks for the reminder! I'll be there."},
