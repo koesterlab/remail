@@ -31,3 +31,39 @@ class ProtocolTemplate(ABC):
     @abstractclassmethod
     def getEmails(self)->list[Email]:
         pass
+
+class ImapProtocol(ProtocolTemplate):
+    def login(self,user:str, password:str) -> bool:
+        pass
+    
+    def logout(self) -> bool:
+        pass
+    
+    def sendEmail(self,Email:Email) -> bool:
+        """Requierment: User is logged in"""
+        pass
+
+    def deleteEmail(self, uid:int) -> bool:
+        """Requierment: User is logged in"""
+        pass
+    
+    def getEmails(self)->list[Email]:
+        pass
+
+class ExchangeProtocol(ProtocolTemplate):
+    def login(self,user:str, password:str) -> bool:
+        pass
+    
+    def logout(self) -> bool:
+        pass
+    
+    def sendEmail(self,Email:Email) -> bool:
+        """Requierment: User is logged in"""
+        pass
+
+    def deleteEmail(self, uid:int) -> bool:
+        """Requierment: User is logged in"""
+        pass
+    
+    def getEmails(self)->list[Email]:
+        pass
