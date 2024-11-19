@@ -1,4 +1,4 @@
-from abc import ABC, abstractclassmethod
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
 @dataclass
@@ -14,21 +14,21 @@ class Email:
 
 
 class ProtocolTemplate(ABC):
-    @abstractclassmethod
+    @abstractmethod
     def login(self,user:str, password:str) -> bool:
         pass
-    @abstractclassmethod
+    @abstractmethod
     def logout(self) -> bool:
         pass
-    @abstractclassmethod
+    @abstractmethod
     def sendEmail(self,Email:Email) -> bool:
         """Requierment: User is logged in"""
         pass
-    @abstractclassmethod
+    @abstractmethod
     def deleteEmail(self, uid:int) -> bool:
         """Requierment: User is logged in"""
         pass
-    @abstractclassmethod
+    @abstractmethod
     def getEmails(self)->list[Email]:
         pass
 
