@@ -1,19 +1,15 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-
-@dataclass
-class Email:
-    senderEmailAddr:str
-    recipientEmailAddrs:list[str]
-    CcList:list[str]
-    BccList:list[str]
-    Header:str
-    Body:str
-    attachments:list[str]
-
+from email import Email
 
 
 class ProtocolTemplate(ABC):
+    
+    @property
+    @abstractmethod
+    def logged_in(self) -> bool:
+        pass
+    
     @abstractmethod
     def login(self,user:str, password:str) -> bool:
         pass
@@ -21,7 +17,7 @@ class ProtocolTemplate(ABC):
     def logout(self) -> bool:
         pass
     @abstractmethod
-    def sendEmail(self,Email:Email) -> bool:
+    def sendEmail(self,Email: Email) -> bool:
         """Requierment: User is logged in"""
         pass
     @abstractmethod
@@ -33,6 +29,11 @@ class ProtocolTemplate(ABC):
         pass
 
 class ImapProtocol(ProtocolTemplate):
+    
+    @property
+    def logged_in(self) -> bool:
+        pass
+    
     def login(self,user:str, password:str) -> bool:
         pass
     
@@ -51,6 +52,11 @@ class ImapProtocol(ProtocolTemplate):
         pass
 
 class ExchangeProtocol(ProtocolTemplate):
+    
+    @property
+    def logged_in(self) -> bool:
+        pass
+
     def login(self,user:str, password:str) -> bool:
         pass
     
