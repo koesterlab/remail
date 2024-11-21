@@ -65,28 +65,40 @@ class ImapProtocol(ProtocolTemplate):
     def getEmails(self)->list[Email]:
         pass
 
+from exchangelib import Credentials, Account, Message, Configuration
+
 class ExchangeProtocol(ProtocolTemplate):
     
-    username : str = ""
-    password : str = ""
+
+    cred : Credentials | None = None
+    acc = None
 
     @property
     def logged_in(self) -> bool:
-        return self.username != "" and self.password != ""
+        return True #self.cred != None and self.acc != None
 
     def login(self,user:str, password:str) -> bool:
-        self.username = user
-        self.password = password
+        self.cred = Credentials("ude-1729267167",password)
+        #config = Configuration(self.cred,"mailout.uni-due.de")
+        self.acc = Account(user, credentials=self.cred, autodiscover=True)
         return True
     
     def logout(self) -> bool:
-        self.username = ""
-        self.password = ""
+        self.acc = None
+        self.cred = None
         return True
     
     def sendEmail(self,Email:Email) -> bool:
         """Requierment: User is logged in"""
-        pass
+        if not self.logged_in:
+            return False
+        m = Message(
+            account = self.acc,
+            subject = "Test Subject",
+            body = "Dies ist der Inhalt",
+            to_recipients = ["thatchmilo35@gmail.com"]
+        )
+        m.send()
 
     def deleteEmail(self, uid:int) -> bool:
         """Requierment: User is logged in"""
@@ -108,7 +120,7 @@ if __name__ == "__main__":
     #exchange
 
     print("Exchange Logged_in: ",exchange.logged_in)
-    exchange.login("ude-1729267167","6jTDTk6hS3j^b%@tw")
+    exchange.login("praxisprojekt-remail@uni-due.de","6jTDTk6hS3j^b%@tw")
     print("Exchange Logged_in: ",exchange.logged_in)
     exchange.logout()
     print("Exchange Logged_in: ",exchange.logged_in)
