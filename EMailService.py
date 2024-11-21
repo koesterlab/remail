@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from email import Email
+from imaplib import IMAP4
 
 
 class ProtocolTemplate(ABC):
@@ -30,14 +31,28 @@ class ProtocolTemplate(ABC):
 
 class ImapProtocol(ProtocolTemplate):
     
+    user_username = None
+    user_passwort = None
+    host = None
+
+    IMAP = None
+    
+
     @property
     def logged_in(self) -> bool:
-        pass
+        return self.user_passwort != None and self.user_username != None
     
     def login(self,user:str, password:str) -> bool:
+        self.IMAP = IMAP4(self.host)
+        self.user_username = user
+        self.user_passwort = password
+        self.IMAP.login(user, password)
         pass
     
     def logout(self) -> bool:
+        self.IMAP.logout()
+        self.user_passwort = None
+        self.user_username = None
         pass
     
     def sendEmail(self,Email:Email) -> bool:
