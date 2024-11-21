@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from email2 import Email
-from imaplib import IMAP4
+from imaplib import IMAP4_SSL
 
 class ProtocolTemplate(ABC):
     
@@ -32,9 +32,9 @@ class ImapProtocol(ProtocolTemplate):
     
     user_username = None
     user_passwort = None
-    host = None
+    host = "imap.gmail.com"
 
-    IMAP = None
+    IMAP = IMAP4_SSL(host)
     
 
     @property
@@ -42,7 +42,6 @@ class ImapProtocol(ProtocolTemplate):
         return self.user_passwort != None and self.user_username != None
     
     def login(self,user:str, password:str) -> bool:
-        self.IMAP = IMAP4(self.host)
         self.user_username = user
         self.user_passwort = password
         self.IMAP.login(user, password)
@@ -112,7 +111,7 @@ if __name__ == "__main__":
     exchange = ExchangeProtocol()
 
     print("IMAP Logged_in: ",imap.logged_in)
-    imap.login("","")
+    imap.login("thatchmilo35@gmail.com","mgtszvrhgkphxghm")
     print("IMAP Logged_in: ",imap.logged_in)
     imap.logout()
     print("IMAP Logged_in: ",imap.logged_in)
