@@ -157,10 +157,20 @@ class ExchangeProtocol(ProtocolTemplate):
         )
         m.send()
 
+    def mark_email(self, uid, read : bool):
+        for item in self.acc.inbox.filter(message_id=uid):
+            item.is_read = read
+            item.save(update_fields = ["is_read"])
+
+
     def deleteEmail(self, uid:int) -> bool:
-        """Requierment: User is logged in"""
+        """Requierment: User is logged in
+        moves the email in the trash folder"""
         if not self.logged_in:
             return False
+        
+        for item in self.acc.inbox.filter(message_id=uid):
+            item.move_to_trash()
     
     def getEmails(self)->list[Email]:
         
@@ -169,7 +179,8 @@ class ExchangeProtocol(ProtocolTemplate):
 
         result = []
         for item in self.acc.inbox.all():
-            print(item.subject)
+            result += [(item.subject,item.message_id)]
+        return result
 
 def imap_test():
     imap = ImapProtocol()
@@ -199,14 +210,15 @@ def exchange_test():
     print("Exchange Logged_in: ",exchange.logged_in)
     exchange.login("praxisprojekt-remail@uni-due.de",keyring.get_password("remail/exchange","praxisprojekt-remail@uni-due.de"))
     print("Exchange Logged_in: ",exchange.logged_in)
-    exchange.getEmails()
+    emails = exchange.getEmails()
+    exchange.mark_email(emails[0][1],False)
     exchange.logout()
     print("Exchange Logged_in: ",exchange.logged_in)
 
 if __name__ == "__main__":
     print("Starte Tests")
     #imap_test()
-    #exchange_test()
+    exchange_test()
     print("Tests beendet")
     
     
