@@ -18,7 +18,7 @@ class ProtocolTemplate(ABC):
     def logout(self) -> bool:
         pass
     @abstractmethod
-    def sendEmail(self,Email: Email) -> bool:
+    def sendEmail(self,email: Email) -> bool:
         """Requierment: User is logged in"""
         pass
     @abstractmethod
@@ -99,53 +99,80 @@ class ImapProtocol(ProtocolTemplate):
     def getEmails(self)->list[Email]:
         pass
 
-from exchangelib import Credentials, Account, Message, Configuration
+from exchangelib import Credentials, Account, Message
 
 class ExchangeProtocol(ProtocolTemplate):
     
 
-    cred : Credentials | None = None
-    acc = None
+    def __init__(self):
+        self.cred = None
+        self.acc = None
+        self._logged_in = False
 
     @property
     def logged_in(self) -> bool:
-        return True #self.cred != None and self.acc != None
+        return self._logged_in
 
     def login(self,user:str, password:str) -> bool:
-        self.cred = Credentials("ude-1729267167",password)
-        #config = Configuration(self.cred,"mailout.uni-due.de")
-        self.acc = Account(user, credentials=self.cred, autodiscover=True)
-        return True
+        try:
+            self.cred = Credentials("ude-1729267167",password)
+            self.acc = Account(user, credentials=self.cred, autodiscover=True)
+            self._logged_in = True
+            return True
+        except:
+            return False
     
     def logout(self) -> bool:
         self.acc = None
         self.cred = None
+        self._logged_in = False
         return True
     
-    def sendEmail(self,Email:Email) -> bool:
+    def sendEmail(self,email:Email) -> bool:
         """Requierment: User is logged in"""
         if not self.logged_in:
             return False
+        
+
+        to = []
+        cc = []
+        bcc = []
+        for recipent in email.recipients:
+            match (recipent.kind):
+                case RecipientKind.to:
+                    to += [recipent.contact.email_address]
+                case RecipientKind.cc:
+                    cc += [recipent.contact.email_address]
+                case RecipientKind.bcc:
+                    bcc += [recipent.contact.email_address]
+
+
         m = Message(
             account = self.acc,
-            subject = "Test Subject",
-            body = "Dies ist der Inhalt",
-            to_recipients = ["thatchmilo35@gmail.com"]
+            subject = email.subject,
+            body = email.body,
+            to_recipients = to,
+            cc_recipients = cc,
+            bcc_recipients = bcc
         )
         m.send()
 
     def deleteEmail(self, uid:int) -> bool:
         """Requierment: User is logged in"""
-        pass
+        if not self.logged_in:
+            return False
     
     def getEmails(self)->list[Email]:
-        pass
+        
+        if not self.logged_in:
+            return None
 
-if __name__ == "__main__":
+        result = []
+        for item in self.acc.inbox.all():
+            print(item.subject)
+
+def imap_test():
     imap = ImapProtocol()
-    exchange = ExchangeProtocol()
-
-    	
     test = Email(
         
         subject="Hello",
@@ -162,11 +189,25 @@ if __name__ == "__main__":
     imap.logout()
     print("IMAP Logged_in: ",imap.logged_in)
 
-    #exchange
+def exchange_test():
+    exchange = ExchangeProtocol()
 
-    #print("Exchange Logged_in: ",exchange.logged_in)
-    #exchange.login("praxisprojekt-remail@uni-due.de","6jTDTk6hS3j^b%@tw")
-    #print("Exchange Logged_in: ",exchange.logged_in)
-    #exchange.logout()
-    #print("Exchange Logged_in: ",exchange.logged_in)
+
+    #exchange
+    import keyring
+
+    print("Exchange Logged_in: ",exchange.logged_in)
+    exchange.login("praxisprojekt-remail@uni-due.de",keyring.get_password("remail/exchange","praxisprojekt-remail@uni-due.de"))
+    print("Exchange Logged_in: ",exchange.logged_in)
+    exchange.getEmails()
+    exchange.logout()
+    print("Exchange Logged_in: ",exchange.logged_in)
+
+if __name__ == "__main__":
+    print("Starte Tests")
+    #imap_test()
+    #exchange_test()
+    print("Tests beendet")
+    
+    
 
