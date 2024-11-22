@@ -2,6 +2,8 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from email2 import Email
 from imaplib import IMAP4_SSL
+from imapclient import IMAPClient
+
 
 class ProtocolTemplate(ABC):
     
@@ -34,7 +36,7 @@ class ImapProtocol(ProtocolTemplate):
     user_passwort = None
     host = "imap.gmail.com"
 
-    IMAP = IMAP4_SSL(host)
+    IMAP = IMAPClient(host)
     
 
     @property
@@ -45,13 +47,11 @@ class ImapProtocol(ProtocolTemplate):
         self.user_username = user
         self.user_passwort = password
         self.IMAP.login(user, password)
-        pass
     
     def logout(self) -> bool:
         self.IMAP.logout()
         self.user_passwort = None
         self.user_username = None
-        pass
     
     def sendEmail(self,Email:Email) -> bool:
         """Requierment: User is logged in"""
@@ -59,10 +59,19 @@ class ImapProtocol(ProtocolTemplate):
 
     def deleteEmail(self, uid:int) -> bool:
         """Requierment: User is logged in"""
-        pass
+        for mailbox in self.IMAP.list_folders():
+            self.IMAP.select_folder(mailbox)
+            status, messages = self.IMAP.search("")
+            if status == "OK":
+                self.IMAP.store(uid,"+Flags","\\Deleted")
+                self.IMAP.expunge()
+            self.IMAP.close()
     
     def getEmails(self)->list[Email]:
-        pass
+            pass
+
+
+
 
 from exchangelib import Credentials, Account, Message, Configuration
 
