@@ -6,6 +6,7 @@ from imapclient import IMAPClient
 from smtplib import SMTP_SSL,SMTP_SSL_PORT
 import email
 
+
 class ProtocolTemplate(ABC):
     
     @property
@@ -101,15 +102,15 @@ class ImapProtocol(ProtocolTemplate):
                     self.IMAP.delete_messages()
     
     def getEmails(self)->list[Email]:
-        listofMails = list[Email]
+        listofMails = []
         self.IMAP.select_folder("INBOX")
         messages_ids = self.IMAP.search()
         for uid,message_data in self.IMAP.fetch(messages_ids,"RFC822").items():
             email_message = email.message_from_bytes(message_data[b"RFC822"])
             newEmail = Email()
             newEmail.id = uid
-            newEmail.sender = email_message.get("FROM")
-            newEmail.subject = email_message.get("SUBJECT")
+            #newEmail.sender = email_message.get("From")
+            newEmail.subject = email_message.get("Subject")
             if email_message.is_multipart():
                 for part in email_message.walk():
                     ctype = part.get_content_type()
@@ -223,7 +224,7 @@ def imap_test():
     print("sent?")
     
     listofmails = imap.getEmails()
-    print(listofmails[0].sender)
+    print("body" ,listofmails[0].body,"id",listofmails[0].id )
 
     imap.logout()
     print("IMAP Logged_in: ",imap.logged_in)
