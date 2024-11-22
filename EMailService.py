@@ -124,7 +124,9 @@ class ImapProtocol(ProtocolTemplate):
             listofMails.append(newEmail)
         return listofMails
 
-from exchangelib import Credentials, Account, Message, Configuration
+
+from exchangelib import Credentials, Account, Message, FileAttachment
+import os
 
 class ExchangeProtocol(ProtocolTemplate):
     
@@ -180,6 +182,16 @@ class ExchangeProtocol(ProtocolTemplate):
             cc_recipients = cc,
             bcc_recipients = bcc
         )
+
+        for attachement in email.attachments:
+            
+            path = attachement.filename
+            if not os.path.exists(path): continue
+            with open(path,"b+r") as f:
+                content = f.read()
+                att = FileAttachment(name = os.path.basename(path), content = content)
+                m.attach(att)
+
         m.send()
 
     def mark_email(self, uid, read : bool):
@@ -235,11 +247,19 @@ def exchange_test():
     #exchange
     #import keyring
 
+    test = Email(
+        
+        subject="Betreff",
+        body="World",
+        recipients=[EmailReception(contact=(Contact(email_address ="thatchmilo35@gmail.com")), kind=RecipientKind.to)],
+        attachments=[Attachment(filename="path")])
+
+
     print("Exchange Logged_in: ",exchange.logged_in)
     #exchange.login("praxisprojekt-remail@uni-due.de",keyring.get_password("remail/exchange","praxisprojekt-remail@uni-due.de"))
     print("Exchange Logged_in: ",exchange.logged_in)
     emails = exchange.getEmails()
-    exchange.mark_email(emails[0][1],False)
+    exchange.sendEmail(test)
     exchange.logout()
     print("Exchange Logged_in: ",exchange.logged_in)
 
