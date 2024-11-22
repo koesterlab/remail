@@ -2,6 +2,9 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from email2 import *
 from imaplib import IMAP4_SSL
+from imapclient import IMAPClient
+from smtplib import SMTP_SSL,SMTP_SSL_PORT
+import email
 
 class ProtocolTemplate(ABC):
     
@@ -36,7 +39,7 @@ class ImapProtocol(ProtocolTemplate):
     user_passwort = None
     host = "imap.gmail.com"
 
-    IMAP = IMAPClient(host)
+    IMAP = IMAPClient(host,use_uid=True)
     SMTP_HOST = host
 
     @property
@@ -93,13 +96,19 @@ class ImapProtocol(ProtocolTemplate):
         """Requierment: User is logged in"""
         for mailbox in self.IMAP.list_folders():
             self.IMAP.select_folder(mailbox)
-            status, messages = self.IMAP.search("")
-            if status == "OK":
-                self.IMAP.store(uid,"+Flags","\\Deleted")
-                self.IMAP.expunge()
-            self.IMAP.close()
+            messages_ids = self.IMAP.search(["UID",uid])
+            if len(messages_ids)!= 0:
+                    self.IMAP.delete_messages()
     
     def getEmails(self)->list[Email]:
+        for mailbox in self.IMAP.list_folders():
+            self.IMAP.select_folder(mailbox)
+            messages_ids = self.IMAP.search()
+            for uid,message_data in self.IMAP.fetch(messages_ids,"RFC822").items():
+                email_message = email.message_from_bytes(message_data[b"RFC822"])
+                Email.id = uid
+                Email.sender = email_message.get("FROM")
+                Email.subject = email_message.get("SUBJECT")
             pass
 
 from exchangelib import Credentials, Account, Message, Configuration
@@ -197,10 +206,10 @@ def exchange_test():
 
 
     #exchange
-    import keyring
+    #import keyring
 
     print("Exchange Logged_in: ",exchange.logged_in)
-    exchange.login("praxisprojekt-remail@uni-due.de",keyring.get_password("remail/exchange","praxisprojekt-remail@uni-due.de"))
+    #exchange.login("praxisprojekt-remail@uni-due.de",keyring.get_password("remail/exchange","praxisprojekt-remail@uni-due.de"))
     print("Exchange Logged_in: ",exchange.logged_in)
     exchange.getEmails()
     exchange.logout()
