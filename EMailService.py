@@ -101,15 +101,28 @@ class ImapProtocol(ProtocolTemplate):
                     self.IMAP.delete_messages()
     
     def getEmails(self)->list[Email]:
-        for mailbox in self.IMAP.list_folders():
-            self.IMAP.select_folder(mailbox)
-            messages_ids = self.IMAP.search()
-            for uid,message_data in self.IMAP.fetch(messages_ids,"RFC822").items():
-                email_message = email.message_from_bytes(message_data[b"RFC822"])
-                Email.id = uid
-                Email.sender = email_message.get("FROM")
-                Email.subject = email_message.get("SUBJECT")
-            pass
+        listofMails = list[Email]
+        self.IMAP.select_folder("INBOX")
+        messages_ids = self.IMAP.search()
+        for uid,message_data in self.IMAP.fetch(messages_ids,"RFC822").items():
+            email_message = email.message_from_bytes(message_data[b"RFC822"])
+            newEmail = Email()
+            newEmail.id = uid
+            newEmail.sender = email_message.get("FROM")
+            newEmail.subject = email_message.get("SUBJECT")
+            if email_message.is_multipart():
+                for part in email_message.walk():
+                    ctype = part.get_content_type()
+                    cdispo = str(part.get('Content-Disposition'))
+
+                    if ctype == 'text/plain' and 'attachment' not in cdispo:
+                        newEmail.body = part.get_payload(decode=True)
+                    break
+
+            else:
+                newEmail.body = email_message.get_payload(decode=True)
+            listofMails.append(newEmail)
+        return listofMails
 
 from exchangelib import Credentials, Account, Message, Configuration
 
@@ -206,9 +219,12 @@ def imap_test():
     imap.login("thatchmilo35@gmail.com","mgtszvrhgkphxghm")
     print("IMAP Logged_in: ",imap.logged_in)
 
-    imap.sendEmail(test)
+    #imap.sendEmail(test)
     print("sent?")
     
+    listofmails = imap.getEmails()
+    print(listofmails[0].sender)
+
     imap.logout()
     print("IMAP Logged_in: ",imap.logged_in)
 
@@ -229,8 +245,8 @@ def exchange_test():
 
 if __name__ == "__main__":
     print("Starte Tests")
-    #imap_test()
-    exchange_test()
+    imap_test()
+    #exchange_test()
     print("Tests beendet")
     
     
