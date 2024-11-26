@@ -81,7 +81,9 @@ class ImapProtocol(ProtocolTemplate):
         msg = EmailMessage()
         msg['Subject'] = email.subject
         msg['From'] = from_email
-        msg['To'] = to_emails[0]
+        msg['To'] = to_emails
+        msg['Cc'] = cc
+        msg['Bcc'] = bcc
         msg.set_content(email.body)
 
         #attachment
@@ -271,7 +273,7 @@ def imap_test():
     test = Email(
         
         subject="Hello",
-        body="World",
+        body="World i wanna go home",
         recipients=[EmailReception(contact=(Contact(email_address ="praxisprojekt-remail@uni-due.de")), kind=RecipientKind.to)],
         attachments=[Attachment(filename=r"C:\Users\toadb\Documents\ReinventingEmail\test.txt")])
 
@@ -293,18 +295,18 @@ def exchange_test():
 
 
     #exchange
-    import keyring
+    #import keyring
 
     test = Email(
         
         subject="Betreff",
         body="World",
-        recipients=[EmailReception(contact=(Contact(email_address ="thatchmilo35@gmail.com")), kind=RecipientKind.to)],
+        recipients=[EmailReception(contact=(Contact(email_address ="thatchmilo35@gmail.com")))],
         attachments=[Attachment(filename="path")])
 
 
     print("Exchange Logged_in: ",exchange.logged_in)
-    exchange.login("praxisprojekt-remail@uni-due.de",keyring.get_password("remail/exchange","praxisprojekt-remail@uni-due.de"))
+    #exchange.login("praxisprojekt-remail@uni-due.de",keyring.get_password("remail/exchange","praxisprojekt-remail@uni-due.de"))
     print("Exchange Logged_in: ",exchange.logged_in)
     emails = exchange.getEmails()
     #exchange.sendEmail(test)
@@ -335,8 +337,8 @@ def get_contact(email : str) -> Contact:
 
 if __name__ == "__main__":
     print("Starte Tests")
-    #imap_test()
-    exchange_test()
+    imap_test()
+    #exchange_test()
     print("Tests beendet")
     
     
