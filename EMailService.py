@@ -215,10 +215,22 @@ class ExchangeProtocol(ProtocolTemplate):
         if not self.logged_in:
             return None
 
+        attachments = []
+
         result = []
         for item in self.acc.inbox.all():
-            result += [(item.subject,item.message_id)]
+            result += [create_email(
+                uid = item.message_id, 
+                sender= item.sender,
+                subject = item.subject, 
+                body = item.body, 
+                attachments=attachments, 
+                to_recipients=item.to_recipients,
+                cc_recipients=[],
+                bcc_recipients=[])]
         return result
+
+#-------------------------------------------------
 
 def imap_test():
     imap = ImapProtocol()
@@ -246,7 +258,7 @@ def exchange_test():
 
 
     #exchange
-    #import keyring
+    import keyring
 
     test = Email(
         
@@ -257,17 +269,39 @@ def exchange_test():
 
 
     print("Exchange Logged_in: ",exchange.logged_in)
-    #exchange.login("praxisprojekt-remail@uni-due.de",keyring.get_password("remail/exchange","praxisprojekt-remail@uni-due.de"))
+    exchange.login("praxisprojekt-remail@uni-due.de",keyring.get_password("remail/exchange","praxisprojekt-remail@uni-due.de"))
     print("Exchange Logged_in: ",exchange.logged_in)
     emails = exchange.getEmails()
-    exchange.sendEmail(test)
+    #exchange.sendEmail(test)
     exchange.logout()
     print("Exchange Logged_in: ",exchange.logged_in)
 
+def create_email(uid : str,sender : str, subject: str, body: str, attachments: list[str], to_recipients: list[str],cc_recipients: list[str],bcc_recipients: list[str], html_files: list[str] = None ) -> Email:
+    
+    sender_contact = get_contact(sender)
+
+    attachments_class = [Attachment(filename) for filename in attachments]
+
+    recipients = [EmailReception(contact = get_contact(recipient), kind = RecipientKind.to) for recipient in to_recipients]
+    recipients += [EmailReception(contact = get_contact(recipient), kind = RecipientKind.cc) for recipient in cc_recipients]
+    recipients += [EmailReception(contact = get_contact(recipient), kind = RecipientKind.bcc) for recipient in bcc_recipients]
+
+    return Email(
+        id = uid,
+        sender_contact= sender_contact,
+        subject=subject,
+        body=body,
+        attachments=attachments_class,
+        recipients=recipients
+    )
+
+def get_contact(email : str) -> Contact:
+    return Contact(email_address=email)
+
 if __name__ == "__main__":
     print("Starte Tests")
-    imap_test()
-    #exchange_test()
+    #imap_test()
+    exchange_test()
     print("Tests beendet")
     
     
