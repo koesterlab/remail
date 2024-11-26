@@ -105,17 +105,15 @@ class ImapProtocol(ProtocolTemplate):
     def getEmails(self)->list[Email]:
         listofMails = []
         self.IMAP.select_folder("INBOX")
-        messages_ids = self.IMAP.search()
-        for uid,message_data in self.IMAP.fetch(messages_ids,"RFC822").items():
+        messages_ids = self.IMAP.search(["ALL"])
+        for msgid,message_data in self.IMAP.fetch(messages_ids,["RFC822","UID"]).items():
             email_message = email.message_from_bytes(message_data[b"RFC822"])
-            newEmail = Email()
-            newEmail.id = uid
-            #newEmail.sender = email_message.get("From")
-            newEmail.subject = email_message.get("Subject")
+            Uid = message_data.get(b"UID")
             html_file_names = []
             attachments_file_names = []
             if email_message.is_multipart():
                 html_parts = []
+                #iter over all parts
                 for part in email_message.walk():
                     ctype = part.get_content_type()
                     cdispo = str(part.get('Content-Disposition'))
@@ -138,20 +136,30 @@ class ImapProtocol(ProtocolTemplate):
 
                     #get plain text from email
                     if ctype == 'text/plain' and 'attachment' not in cdispo:
-                        newEmail.body = part.get_payload(decode=True)
+                        body = part.get_payload(decode=True)
                     break
 
                 #safe HTML parts
                 if html_parts:
                     for i,html in enumerate(html_parts):
-                        htmlfilename = f"email_{uid}_part_{i+1}.html"
+                        htmlfilename = f"email_{Uid}_part_{i+1}.html"
                         with open(htmlfilename,"w",encoding="utf-8") as f:
                             f.write(html)
                             html_file_names.append(htmlfilename)
             #get 
             else:
-                newEmail.body = email_message.get_payload(decode=True)
-            listofMails.append(newEmail)
+                body = email_message.get_payload(decode=True)
+
+            listofMails += [create_email(
+                                uid = Uid,
+                                sender = email_message["from"],
+                                subject = email_message["subject"],
+                                body = body,
+                                attachments = attachments_file_names,
+                                to_recipients = email_message["to"],
+                                cc_recipients = email_message["cc"],
+                                bcc_recipients = email_message["bcc"],
+                                html_files = html_file_names)]
         return listofMails
 
 
@@ -277,7 +285,7 @@ def imap_test():
     print("sent?")
     
     listofmails = imap.getEmails()
-    print("body" ,listofmails[0].body,"id",listofmails[0].id )
+    #print("body" ,listofmails[0].body,"id",listofmails[0].id )
 
     imap.logout()
     print("IMAP Logged_in: ",imap.logged_in)
@@ -312,8 +320,10 @@ def create_email(uid : str,sender : str, subject: str, body: str, attachments: l
     attachments_class = [Attachment(filename) for filename in attachments]
 
     recipients = [EmailReception(contact = get_contact(recipient), kind = RecipientKind.to) for recipient in to_recipients]
-    recipients += [EmailReception(contact = get_contact(recipient), kind = RecipientKind.cc) for recipient in cc_recipients]
-    recipients += [EmailReception(contact = get_contact(recipient), kind = RecipientKind.bcc) for recipient in bcc_recipients]
+    if cc_recipients:
+        recipients += [EmailReception(contact = get_contact(recipient), kind = RecipientKind.cc) for recipient in cc_recipients]
+    if bcc_recipients:
+        recipients += [EmailReception(contact = get_contact(recipient), kind = RecipientKind.bcc) for recipient in bcc_recipients]
 
     return Email(
         id = uid,
@@ -329,8 +339,8 @@ def get_contact(email : str) -> Contact:
 
 if __name__ == "__main__":
     print("Starte Tests")
-    #imap_test()
-    exchange_test()
+    imap_test()
+    #exchange_test()
     print("Tests beendet")
     
     
