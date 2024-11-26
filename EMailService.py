@@ -5,7 +5,7 @@ from imaplib import IMAP4_SSL
 from imapclient import IMAPClient
 from smtplib import SMTP_SSL,SMTP_SSL_PORT
 import email
-
+from email.message import EmailMessage
 
 
 class ProtocolTemplate(ABC):
@@ -77,18 +77,25 @@ class ImapProtocol(ProtocolTemplate):
 
         #craft email
         from_email = SMTP_USER
-        to_emails = to
-        body = email.body
-        headers = f"From: {from_email}\r\n"
-        headers += f"To: {', '.join(to_emails)}\r\n"
-        headers += f"Subject: {email.subject}\r\n"
-        email_message = headers + "\r\n" + body
+        to_emails = to        
+        msg = EmailMessage()
+        msg['Subject'] = email.subject
+        msg['From'] = from_email
+        msg['To'] = to_emails
+        msg['Cc'] = cc
+        msg['Bcc'] = bcc
+        msg.set_content(email.body)
+
+        #attachment
+        with open(email.attachments[0].filename, "rb") as f:
+            file_data = f.read()
+        msg.add_attachment(file_data, maintype = "text", subtype = "plain", filename = "test.txt")
 
         #connect/authenticate
         smtp_server = SMTP_SSL(self.SMTP_HOST, port = SMTP_SSL_PORT)
         smtp_server.set_debuglevel(1)
         smtp_server.login(SMTP_USER, SMTP_PASS)
-        smtp_server.sendmail(from_email, to_emails, email_message)
+        smtp_server.send_message(msg)
         
         #disconnect
         smtp_server.quit()
@@ -164,7 +171,7 @@ class ImapProtocol(ProtocolTemplate):
 
 
 from exchangelib import Credentials, Account, Message, FileAttachment
-import os
+import os 
 
 class ExchangeProtocol(ProtocolTemplate):
     
@@ -252,10 +259,14 @@ class ExchangeProtocol(ProtocolTemplate):
         if not self.logged_in:
             return None
 
-        attachments = []
-
         result = []
         for item in self.acc.inbox.all():
+            attachments = []
+            for attachment in item.attachments:
+                if isinstance(attachment, FileAttachment):
+                    local_path = os.path.join('attachments', attachment.name)
+                    with open(local_path, 'wb') as f:
+                        f.write(attachment.content)
             result += [create_email(
                 uid = item.message_id, 
                 sender= item.sender,
@@ -274,14 +285,15 @@ def imap_test():
     test = Email(
         
         subject="Hello",
-        body="World",
-        recipients=[EmailReception(contact=(Contact(email_address ="praxisprojekt-remail@uni-due.de")), kind=RecipientKind.to)])
+        body="World i wanna go home",
+        recipients=[EmailReception(contact=(Contact(email_address ="praxisprojekt-remail@uni-due.de")), kind=RecipientKind.to)],
+        attachments=[Attachment(filename=r"C:\Users\toadb\Documents\ReinventingEmail\test.txt")])
 
     print("IMAP Logged_in: ",imap.logged_in)
     imap.login("thatchmilo35@gmail.com","mgtszvrhgkphxghm")
     print("IMAP Logged_in: ",imap.logged_in)
 
-    #imap.sendEmail(test)
+    imap.sendEmail(test)
     print("sent?")
     
     listofmails = imap.getEmails()
@@ -295,18 +307,18 @@ def exchange_test():
 
 
     #exchange
-    import keyring
+    #import keyring
 
     test = Email(
         
         subject="Betreff",
         body="World",
-        recipients=[EmailReception(contact=(Contact(email_address ="thatchmilo35@gmail.com")), kind=RecipientKind.to)],
+        recipients=[EmailReception(contact=(Contact(email_address ="thatchmilo35@gmail.com")))],
         attachments=[Attachment(filename="path")])
 
 
     print("Exchange Logged_in: ",exchange.logged_in)
-    exchange.login("praxisprojekt-remail@uni-due.de",keyring.get_password("remail/exchange","praxisprojekt-remail@uni-due.de"))
+    #exchange.login("praxisprojekt-remail@uni-due.de",keyring.get_password("remail/exchange","praxisprojekt-remail@uni-due.de"))
     print("Exchange Logged_in: ",exchange.logged_in)
     emails = exchange.getEmails()
     #exchange.sendEmail(test)
