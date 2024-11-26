@@ -7,6 +7,7 @@ from smtplib import SMTP_SSL,SMTP_SSL_PORT
 import email
 from email.message import EmailMessage
 
+
 class ProtocolTemplate(ABC):
     
     @property
@@ -116,15 +117,43 @@ class ImapProtocol(ProtocolTemplate):
             newEmail.id = uid
             #newEmail.sender = email_message.get("From")
             newEmail.subject = email_message.get("Subject")
+            html_file_names = []
+            attachments_file_names = []
             if email_message.is_multipart():
+                html_parts = []
                 for part in email_message.walk():
                     ctype = part.get_content_type()
                     cdispo = str(part.get('Content-Disposition'))
 
+                    #get attachments part
+                    if part.get_content_disposition() == "attachment":
+                        filename = part.get_filename()
+
+                        #safe attachments
+                        if filename:
+                            filepath = os.path.join("attachments", filename)
+                            os.makedirs("attachments", exist_ok=True)
+                            with open(filepath, "wb") as f:
+                                f.write(part.get_payload(decode=True))
+                                attachments_file_names.append(filepath)
+                    #get HTML parts
+                    if part.get_content_disposition() == "text/html":
+                        html_content = part.get_payload(decode=True).decode(part.get_content_charset() or "utf-8")
+                        html_parts.append(html_content)
+
+                    #get plain text from email
                     if ctype == 'text/plain' and 'attachment' not in cdispo:
                         newEmail.body = part.get_payload(decode=True)
                     break
 
+                #safe HTML parts
+                if html_parts:
+                    for i,html in enumerate(html_parts):
+                        htmlfilename = f"email_{uid}_part_{i+1}.html"
+                        with open(htmlfilename,"w",encoding="utf-8") as f:
+                            f.write(html)
+                            html_file_names.append(htmlfilename)
+            #get 
             else:
                 newEmail.body = email_message.get_payload(decode=True)
             listofMails.append(newEmail)
@@ -220,10 +249,22 @@ class ExchangeProtocol(ProtocolTemplate):
         if not self.logged_in:
             return None
 
+        attachments = []
+
         result = []
         for item in self.acc.inbox.all():
-            result += [(item.subject,item.message_id)]
+            result += [create_email(
+                uid = item.message_id, 
+                sender= item.sender,
+                subject = item.subject, 
+                body = item.body, 
+                attachments=attachments, 
+                to_recipients=item.to_recipients,
+                cc_recipients=[],
+                bcc_recipients=[])]
         return result
+
+#-------------------------------------------------
 
 def imap_test():
     imap = ImapProtocol()
@@ -252,7 +293,7 @@ def exchange_test():
 
 
     #exchange
-    #import keyring
+    import keyring
 
     test = Email(
         
@@ -263,17 +304,39 @@ def exchange_test():
 
 
     print("Exchange Logged_in: ",exchange.logged_in)
-    #exchange.login("praxisprojekt-remail@uni-due.de",keyring.get_password("remail/exchange","praxisprojekt-remail@uni-due.de"))
+    exchange.login("praxisprojekt-remail@uni-due.de",keyring.get_password("remail/exchange","praxisprojekt-remail@uni-due.de"))
     print("Exchange Logged_in: ",exchange.logged_in)
     emails = exchange.getEmails()
-    exchange.sendEmail(test)
+    #exchange.sendEmail(test)
     exchange.logout()
     print("Exchange Logged_in: ",exchange.logged_in)
 
+def create_email(uid : str,sender : str, subject: str, body: str, attachments: list[str], to_recipients: list[str],cc_recipients: list[str],bcc_recipients: list[str], html_files: list[str] = None ) -> Email:
+    
+    sender_contact = get_contact(sender)
+
+    attachments_class = [Attachment(filename) for filename in attachments]
+
+    recipients = [EmailReception(contact = get_contact(recipient), kind = RecipientKind.to) for recipient in to_recipients]
+    recipients += [EmailReception(contact = get_contact(recipient), kind = RecipientKind.cc) for recipient in cc_recipients]
+    recipients += [EmailReception(contact = get_contact(recipient), kind = RecipientKind.bcc) for recipient in bcc_recipients]
+
+    return Email(
+        id = uid,
+        sender_contact= sender_contact,
+        subject=subject,
+        body=body,
+        attachments=attachments_class,
+        recipients=recipients
+    )
+
+def get_contact(email : str) -> Contact:
+    return Contact(email_address=email)
+
 if __name__ == "__main__":
     print("Starte Tests")
-    imap_test()
-    #exchange_test()
+    #imap_test()
+    exchange_test()
     print("Tests beendet")
     
     
