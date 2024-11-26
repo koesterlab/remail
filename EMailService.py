@@ -156,7 +156,7 @@ class ImapProtocol(ProtocolTemplate):
 
 
 from exchangelib import Credentials, Account, Message, FileAttachment
-import os
+import os 
 
 class ExchangeProtocol(ProtocolTemplate):
     
@@ -244,10 +244,14 @@ class ExchangeProtocol(ProtocolTemplate):
         if not self.logged_in:
             return None
 
-        attachments = []
-
         result = []
         for item in self.acc.inbox.all():
+            attachments = []
+            for attachment in item.attachments:
+                if isinstance(attachment, FileAttachment):
+                    local_path = os.path.join('attachments', attachment.name)
+                    with open(local_path, 'wb') as f:
+                        f.write(attachment.content)
             result += [create_email(
                 uid = item.message_id, 
                 sender= item.sender,
