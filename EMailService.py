@@ -7,6 +7,7 @@ from smtplib import SMTP_SSL,SMTP_SSL_PORT
 import email
 
 
+
 class ProtocolTemplate(ABC):
     
     @property
@@ -111,15 +112,43 @@ class ImapProtocol(ProtocolTemplate):
             newEmail.id = uid
             #newEmail.sender = email_message.get("From")
             newEmail.subject = email_message.get("Subject")
+            html_file_names = []
+            attachments_file_names = []
             if email_message.is_multipart():
+                html_parts = []
                 for part in email_message.walk():
                     ctype = part.get_content_type()
                     cdispo = str(part.get('Content-Disposition'))
 
+                    #get attachments part
+                    if part.get_content_disposition() == "attachment":
+                        filename = part.get_filename()
+
+                        #safe attachments
+                        if filename:
+                            filepath = os.path.join("attachments", filename)
+                            os.makedirs("attachments", exist_ok=True)
+                            with open(filepath, "wb") as f:
+                                f.write(part.get_payload(decode=True))
+                                attachments_file_names.append(filepath)
+                    #get HTML parts
+                    if part.get_content_disposition() == "text/html":
+                        html_content = part.get_payload(decode=True).decode(part.get_content_charset() or "utf-8")
+                        html_parts.append(html_content)
+
+                    #get plain text from email
                     if ctype == 'text/plain' and 'attachment' not in cdispo:
                         newEmail.body = part.get_payload(decode=True)
                     break
 
+                #safe HTML parts
+                if html_parts:
+                    for i,html in enumerate(html_parts):
+                        htmlfilename = f"email_{uid}_part_{i+1}.html"
+                        with open(htmlfilename,"w",encoding="utf-8") as f:
+                            f.write(html)
+                            html_file_names.append(htmlfilename)
+            #get 
             else:
                 newEmail.body = email_message.get_payload(decode=True)
             listofMails.append(newEmail)
