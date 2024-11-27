@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
-from email2 import *
-from imaplib import IMAP4_SSL
+from email2 import Email, EmailReception, Attachment, Contact, RecipientKind
+#from imaplib import IMAP4_SSL
 from imapclient import IMAPClient
 from smtplib import SMTP_SSL,SMTP_SSL_PORT
 import email
@@ -22,15 +21,15 @@ class ProtocolTemplate(ABC):
     def logout(self) -> bool:
         pass
     @abstractmethod
-    def sendEmail(self,email: Email) -> bool:
+    def send_email(self,email: Email) -> bool:
         """Requierment: User is logged in"""
         pass
     @abstractmethod
-    def deleteEmail(self, uid:int) -> bool:
+    def delete_email(self, uid:int) -> bool:
         """Requierment: User is logged in"""
         pass
     @abstractmethod
-    def getEmails(self)->list[Email]:
+    def get_emails(self)->list[Email]:
         pass
 
 class ImapProtocol(ProtocolTemplate):
@@ -58,7 +57,7 @@ class ImapProtocol(ProtocolTemplate):
         self.user_passwort = None
         self.user_username = None
     
-    def sendEmail(self, email:Email) -> bool:
+    def send_email(self, email:Email) -> bool:
         """Requierment: User is logged in"""
         SMTP_USER = self.user_username
         SMTP_PASS = self.user_passwort
@@ -101,7 +100,7 @@ class ImapProtocol(ProtocolTemplate):
         smtp_server.quit()
         pass
 
-    def deleteEmail(self, uid:int) -> bool:
+    def delete_email(self, uid:int) -> bool:
         """Requierment: User is logged in"""
         for mailbox in self.IMAP.list_folders():
             self.IMAP.select_folder(mailbox)
@@ -109,7 +108,7 @@ class ImapProtocol(ProtocolTemplate):
             if len(messages_ids)!= 0:
                     self.IMAP.delete_messages()
     
-    def getEmails(self)->list[Email]:
+    def get_emails(self)->list[Email]:
         listofMails = []
         self.IMAP.select_folder("INBOX")
         messages_ids = self.IMAP.search(["ALL"])
@@ -200,7 +199,7 @@ class ExchangeProtocol(ProtocolTemplate):
         self._logged_in = False
         return True
     
-    def sendEmail(self,email:Email) -> bool:
+    def send_email(self,email:Email) -> bool:
         """Requierment: User is logged in"""
         if not self.logged_in:
             return False
@@ -245,7 +244,7 @@ class ExchangeProtocol(ProtocolTemplate):
             item.save(update_fields = ["is_read"])
 
 
-    def deleteEmail(self, uid:int) -> bool:
+    def delete_email(self, uid:int) -> bool:
         """Requierment: User is logged in
         moves the email in the trash folder"""
         if not self.logged_in:
@@ -254,7 +253,7 @@ class ExchangeProtocol(ProtocolTemplate):
         for item in self.acc.inbox.filter(message_id=uid):
             item.move_to_trash()
     
-    def getEmails(self)->list[Email]:
+    def get_emails(self)->list[Email]:
         
         if not self.logged_in:
             return None
@@ -293,10 +292,10 @@ def imap_test():
     imap.login("thatchmilo35@gmail.com","mgtszvrhgkphxghm")
     print("IMAP Logged_in: ",imap.logged_in)
 
-    imap.sendEmail(test)
+    imap.send_email(test)
     print("sent?")
     
-    listofmails = imap.getEmails()
+    listofmails = imap.get_emails()
     #print("body" ,listofmails[0].body,"id",listofmails[0].id )
 
     imap.logout()
@@ -320,8 +319,8 @@ def exchange_test():
     print("Exchange Logged_in: ",exchange.logged_in)
     #exchange.login("praxisprojekt-remail@uni-due.de",keyring.get_password("remail/exchange","praxisprojekt-remail@uni-due.de"))
     print("Exchange Logged_in: ",exchange.logged_in)
-    emails = exchange.getEmails()
-    #exchange.sendEmail(test)
+    emails = exchange.get_emails()
+    #exchange.send_email(test)
     exchange.logout()
     print("Exchange Logged_in: ",exchange.logged_in)
 
