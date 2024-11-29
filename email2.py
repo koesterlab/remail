@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import List, Optional
 import sqlalchemy
 from sqlmodel import Field, SQLModel, Relationship, Session, create_engine, select
-
+from datetime import datetime
 
 def id_field(table_name: str):
     sequence = sqlalchemy.Sequence(f"{table_name}_id_seq")
@@ -53,3 +53,4 @@ class Email(SQLModel, table=True):
     body: str
     attachments: List[Attachment] = Relationship(back_populates="email")
     recipients: List[EmailReception] = Relationship(back_populates="email")
+    date: datetime
