@@ -177,7 +177,16 @@ class ImapProtocol(ProtocolTemplate):
                                 html_files = html_file_names)]
         return listofMails
 
-    def getDeletetEmail()->list[str]:
+    def getDeletedEmail(self)->list[str]:
+        listofUIPsDatenbank = []
+        listofUIPsIMAP = []
+        for mailbox in self.IMAP.list_folders():
+            self.IMAP.select_folder(mailbox)
+            messages_ids = self.IMAP.search(["ALL"])
+            for message_data in self.IMAP.fetch(messages_ids,["RFC822","UID"]).items():
+                listofUIPsIMAP.append(message_data.get(b"UID"))
+        return listofUIPsDatenbank-listofUIPsIMAP
+
 
 
 
