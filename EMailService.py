@@ -5,7 +5,7 @@ from imapclient import IMAPClient
 from smtplib import SMTP_SSL,SMTP_SSL_PORT
 import email
 from email.message import EmailMessage
-from datetime import date
+from datetime import datetime
 
 
 class ProtocolTemplate(ABC):
@@ -30,7 +30,7 @@ class ProtocolTemplate(ABC):
         """Requierment: User is logged in"""
         pass
     @abstractmethod
-    def get_emails(self, date : date)->list[Email]:
+    def get_emails(self, date : datetime = None)->list[Email]:
         pass
 
 class ImapProtocol(ProtocolTemplate):
@@ -109,7 +109,7 @@ class ImapProtocol(ProtocolTemplate):
             if len(messages_ids)!= 0:
                     self.IMAP.delete_messages()
     
-    def get_emails(self, date : date)->list[Email]:
+    def get_emails(self, date : datetime = None)->list[Email]:
         listofMails = []
         self.IMAP.select_folder("INBOX")
         messages_ids = self.IMAP.search(["ALL"])
@@ -170,7 +170,7 @@ class ImapProtocol(ProtocolTemplate):
         return listofMails
 
 
-from exchangelib import Credentials, Account, Message, FileAttachment
+from exchangelib import Credentials, Account, Message, FileAttachment, EWSDateTime, UTC
 import os 
 
 class ExchangeProtocol(ProtocolTemplate):
@@ -254,20 +254,30 @@ class ExchangeProtocol(ProtocolTemplate):
         for item in self.acc.inbox.filter(message_id=uid):
             item.move_to_trash()
     
-    def get_emails(self, date : date)->list[Email]:
+    def get_emails(self, date : datetime = None)->list[Email]:
         
         if not self.logged_in:
             return None
 
         result = []
-        for item in self.acc.inbox.all():
-            attachments = []
-            for attachment in item.attachments:
-                if isinstance(attachment, FileAttachment):
-                    local_path = os.path.join('attachments', attachment.name)
-                    with open(local_path, 'wb') as f:
-                        f.write(attachment.content)
-            result += [create_email(
+        if not date:
+            for item in self.acc.inbox.all():
+                result += self.get_email_exchange(item)
+        else:
+            start_date = EWSDateTime.from_datetime(date).astimezone(UTC)
+            end_date = EWSDateTime.now().astimezone(UTC)
+            for item in self.acc.inbox.filter(datetime_received__gte = start_date):
+                result += self.get_email_exchange(item)
+        return result
+
+    def get_email_exchange(self, item):
+        attachments = []
+        for attachment in item.attachments:
+            if isinstance(attachment, FileAttachment):
+                local_path = os.path.join('attachments', attachment.name)
+                with open(local_path, 'wb') as f:
+                    f.write(attachment.content)
+        return [create_email(
                 uid = item.message_id, 
                 sender= item.sender,
                 subject = item.subject, 
@@ -276,7 +286,6 @@ class ExchangeProtocol(ProtocolTemplate):
                 to_recipients=item.to_recipients,
                 cc_recipients=[],
                 bcc_recipients=[])]
-        return result
 
 #-------------------------------------------------
 
@@ -307,7 +316,7 @@ def exchange_test():
 
 
     #exchange
-    #import keyring
+    import keyring
 
     test = Email(
         
@@ -318,9 +327,10 @@ def exchange_test():
 
 
     print("Exchange Logged_in: ",exchange.logged_in)
-    #exchange.login("praxisprojekt-remail@uni-due.de",keyring.get_password("remail/exchange","praxisprojekt-remail@uni-due.de"))
+    exchange.login("praxisprojekt-remail@uni-due.de",keyring.get_password("remail/exchange","praxisprojekt-remail@uni-due.de"))
     print("Exchange Logged_in: ",exchange.logged_in)
-    emails = exchange.get_emails()
+    emails = exchange.get_emails(datetime(2024,11,29,9,28,tzinfo=UTC))
+    print(emails)
     #exchange.send_email(test)
     exchange.logout()
     print("Exchange Logged_in: ",exchange.logged_in)
@@ -351,8 +361,8 @@ def get_contact(email : str) -> Contact:
 
 if __name__ == "__main__":
     print("Starte Tests")
-    imap_test()
-    #exchange_test()
+    #imap_test()
+    exchange_test()
     print("Tests beendet")
     
     
