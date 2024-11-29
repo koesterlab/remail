@@ -87,13 +87,14 @@ class ImapProtocol(ProtocolTemplate):
         msg.set_content(email.body)
 
         #attachment
-        with open(email.attachments[0].filename, "rb") as f:
-            file_data = f.read()
-        msg.add_attachment(file_data, maintype = "text", subtype = "plain", filename = "test.txt")
+        for att in email.attachments:
+            with open(att.filename, "rb") as f:
+                file_data = f.read()
+            msg.add_attachment(file_data, maintype = "text", subtype = "plain", filename = "test.txt")
 
         #connect/authenticate
         smtp_server = SMTP_SSL(self.SMTP_HOST, port = SMTP_SSL_PORT)
-        smtp_server.set_debuglevel(1)
+        #smtp_server.set_debuglevel(1)
         smtp_server.login(SMTP_USER, SMTP_PASS)
         smtp_server.send_message(msg)
         
@@ -112,7 +113,10 @@ class ImapProtocol(ProtocolTemplate):
     def get_emails(self, date : date)->list[Email]:
         listofMails = []
         self.IMAP.select_folder("INBOX")
-        messages_ids = self.IMAP.search(["ALL"])
+        if date != None:
+            messages_ids = self.IMAP.search([u'SINCE',date])
+        else: 
+            messages_ids = self.IMAP.search(["ALL"])
         for msgid,message_data in self.IMAP.fetch(messages_ids,["RFC822","UID"]).items():
             email_message = email.message_from_bytes(message_data[b"RFC822"])
             Uid = message_data.get(b"UID")
@@ -156,6 +160,12 @@ class ImapProtocol(ProtocolTemplate):
             #get 
             else:
                 body = email_message.get_payload(decode=True)
+
+            #hier fehlt noch das date 
+
+            in_reply_to = email_message["in_reply_to"]
+            print(in_reply_to)
+
 
             listofMails += [create_email(
                                 uid = Uid,
@@ -284,11 +294,11 @@ def imap_test():
     imap = ImapProtocol()
     test = Email(
         
-        subject="Hellololo",
+        subject="Hellololololo",
         body="World i wanna finally go home today!!!!",
         recipients=[EmailReception(contact=(Contact(email_address ="praxisprojekt-remail@uni-due.de")), kind=RecipientKind.to),EmailReception(contact=(Contact(email_address ="toadbella@gmail.com")), kind=RecipientKind.to)],
-        attachments=[Attachment(filename=r"C:\Users\toadb\Documents\ReinventingEmail\test.txt")])
-
+        #attachments=[Attachment(filename=r"C:\Users\toadb\Documents\ReinventingEmail\test.txt")])
+    )
     print("IMAP Logged_in: ",imap.logged_in)
     imap.login("thatchmilo35@gmail.com","mgtszvrhgkphxghm")
     print("IMAP Logged_in: ",imap.logged_in)
@@ -296,7 +306,7 @@ def imap_test():
     imap.send_email(test)
     print("sent?")
     
-    listofmails = imap.get_emails()
+    #listofmails = imap.get_emails()
     #print("body" ,listofmails[0].body,"id",listofmails[0].id )
 
     imap.logout()
