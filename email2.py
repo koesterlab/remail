@@ -1,8 +1,7 @@
 from enum import Enum
-from pathlib import Path
 from typing import List, Optional
 import sqlalchemy
-from sqlmodel import Field, SQLModel, Relationship, Session, create_engine, select
+from sqlmodel import Field, SQLModel, Relationship
 from datetime import datetime
 
 def id_field(table_name: str):
