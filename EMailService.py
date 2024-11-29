@@ -190,10 +190,6 @@ class ImapProtocol(ProtocolTemplate):
 
 
 
-
-from exchangelib import Credentials, Account, Message, FileAttachment, EWSDateTime, UTC
-import os 
-
 class ExchangeProtocol(ProtocolTemplate):
     
 
