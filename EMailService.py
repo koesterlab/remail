@@ -170,15 +170,21 @@ class ImapProtocol(ProtocolTemplate):
                                 html_files = html_parts)]
         return listofMails
 
-    def get_deleted_email(self)->list[str]:
-        listofUIPsDatenbank = []
+    def get_deleted_emails(self,uids:list[str])->list[str]:
         listofUIPsIMAP = []
         for mailbox in self.IMAP.list_folders():
             self.IMAP.select_folder(mailbox)
             messages_ids = self.IMAP.search(["ALL"])
             for message_data in self.IMAP.fetch(messages_ids,["RFC822","UID"]).items():
                 listofUIPsIMAP.append(message_data.get(b"UID"))
-        return listofUIPsDatenbank-listofUIPsIMAP
+            self.IMAP.close_folder(mailbox)
+        return uids-listofUIPsIMAP
+    
+    def mark_email(self,uid:str,read:bool):
+        if read:
+            self.IMAP.add_flags(uid,["SEEN"])
+        else:
+            self.IMAP.remove_flags(uid,["SEEN"])
 
 
 
