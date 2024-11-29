@@ -112,7 +112,10 @@ class ImapProtocol(ProtocolTemplate):
     def get_emails(self, date : date)->list[Email]:
         listofMails = []
         self.IMAP.select_folder("INBOX")
-        messages_ids = self.IMAP.search(["ALL"])
+        if date != None:
+            messages_ids = self.IMAP.search([u'SINCE',date])
+        else: 
+            messages_ids = self.IMAP.search(["ALL"])
         for msgid,message_data in self.IMAP.fetch(messages_ids,["RFC822","UID"]).items():
             email_message = email.message_from_bytes(message_data[b"RFC822"])
             Uid = message_data.get(b"UID")
@@ -156,6 +159,12 @@ class ImapProtocol(ProtocolTemplate):
             #get 
             else:
                 body = email_message.get_payload(decode=True)
+
+            #hier fehlt noch das date 
+
+            in_reply_to = email_message["in_reply_to"]
+            print(in_reply_to)
+
 
             listofMails += [create_email(
                                 uid = Uid,
