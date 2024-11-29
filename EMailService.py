@@ -94,7 +94,6 @@ class ImapProtocol(ProtocolTemplate):
 
         #connect/authenticate
         smtp_server = SMTP_SSL(self.SMTP_HOST, port = SMTP_SSL_PORT)
-        #smtp_server.set_debuglevel(1)
         smtp_server.login(SMTP_USER, SMTP_PASS)
         smtp_server.send_message(msg)
         
@@ -295,7 +294,7 @@ def imap_test():
     test = Email(
         
         subject="Hellololololo",
-        body="World i wanna finally go home today!!!!",
+        body="Test time!!",
         recipients=[EmailReception(contact=(Contact(email_address ="praxisprojekt-remail@uni-due.de")), kind=RecipientKind.to),EmailReception(contact=(Contact(email_address ="toadbella@gmail.com")), kind=RecipientKind.to)],
         #attachments=[Attachment(filename=r"C:\Users\toadb\Documents\ReinventingEmail\test.txt")])
     )
