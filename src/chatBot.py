@@ -6,7 +6,7 @@ import os
 st.set_page_config(page_title="🦙💬 Llama-cpp Chatbot")
 
 # Llama-cpp Configuration
-MODEL_PATH = "C:/Users/Nönk/Desktop/Praxis Project/remail/.llama/Llama-3.2-1B-Instruct-f16.gguf"  # Update with your model file path
+MODEL_PATH = "./.llama/Llama-3.2-1B-Instruct-f16.gguf"  # Update with your model file path
 llama = Llama(model_path=MODEL_PATH, n_ctx=512, n_batch=128)
 
 def generate_llama_response(prompt_input):
