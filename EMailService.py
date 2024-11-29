@@ -1,11 +1,11 @@
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
-from email2 import *
-from imaplib import IMAP4_SSL
+from email2 import Email, EmailReception, Attachment, Contact, RecipientKind
+#from imaplib import IMAP4_SSL
 from imapclient import IMAPClient
 from smtplib import SMTP_SSL,SMTP_SSL_PORT
 import email
 from email.message import EmailMessage
+from datetime import date
 
 
 class ProtocolTemplate(ABC):
@@ -22,15 +22,15 @@ class ProtocolTemplate(ABC):
     def logout(self) -> bool:
         pass
     @abstractmethod
-    def sendEmail(self,email: Email) -> bool:
+    def send_email(self,email: Email) -> bool:
         """Requierment: User is logged in"""
         pass
     @abstractmethod
-    def deleteEmail(self, uid:int) -> bool:
+    def delete_email(self, uid:int) -> bool:
         """Requierment: User is logged in"""
         pass
     @abstractmethod
-    def getEmails(self)->list[Email]:
+    def get_emails(self, date : date)->list[Email]:
         pass
 
 class ImapProtocol(ProtocolTemplate):
@@ -58,7 +58,7 @@ class ImapProtocol(ProtocolTemplate):
         self.user_passwort = None
         self.user_username = None
     
-    def sendEmail(self, email:Email) -> bool:
+    def send_email(self, email:Email) -> bool:
         """Requierment: User is logged in"""
         SMTP_USER = self.user_username
         SMTP_PASS = self.user_passwort
@@ -101,7 +101,7 @@ class ImapProtocol(ProtocolTemplate):
         smtp_server.quit()
         pass
 
-    def deleteEmail(self, uid:int) -> bool:
+    def delete_email(self, uid:int) -> bool:
         """Requierment: User is logged in"""
         for mailbox in self.IMAP.list_folders():
             self.IMAP.select_folder(mailbox)
@@ -109,20 +109,18 @@ class ImapProtocol(ProtocolTemplate):
             if len(messages_ids)!= 0:
                     self.IMAP.delete_messages()
     
-    def getEmails(self)->list[Email]:
+    def get_emails(self, date : date)->list[Email]:
         listofMails = []
         self.IMAP.select_folder("INBOX")
-        messages_ids = self.IMAP.search()
-        for uid,message_data in self.IMAP.fetch(messages_ids,"RFC822").items():
+        messages_ids = self.IMAP.search(["ALL"])
+        for msgid,message_data in self.IMAP.fetch(messages_ids,["RFC822","UID"]).items():
             email_message = email.message_from_bytes(message_data[b"RFC822"])
-            newEmail = Email()
-            newEmail.id = uid
-            #newEmail.sender = email_message.get("From")
-            newEmail.subject = email_message.get("Subject")
+            Uid = message_data.get(b"UID")
             html_file_names = []
             attachments_file_names = []
             if email_message.is_multipart():
                 html_parts = []
+                #iter over all parts
                 for part in email_message.walk():
                     ctype = part.get_content_type()
                     cdispo = str(part.get('Content-Disposition'))
@@ -145,25 +143,35 @@ class ImapProtocol(ProtocolTemplate):
 
                     #get plain text from email
                     if ctype == 'text/plain' and 'attachment' not in cdispo:
-                        newEmail.body = part.get_payload(decode=True)
+                        body = part.get_payload(decode=True)
                     break
 
                 #safe HTML parts
                 if html_parts:
                     for i,html in enumerate(html_parts):
-                        htmlfilename = f"email_{uid}_part_{i+1}.html"
+                        htmlfilename = f"email_{Uid}_part_{i+1}.html"
                         with open(htmlfilename,"w",encoding="utf-8") as f:
                             f.write(html)
                             html_file_names.append(htmlfilename)
             #get 
             else:
-                newEmail.body = email_message.get_payload(decode=True)
-            listofMails.append(newEmail)
+                body = email_message.get_payload(decode=True)
+
+            listofMails += [create_email(
+                                uid = Uid,
+                                sender = email_message["from"],
+                                subject = email_message["subject"],
+                                body = body,
+                                attachments = attachments_file_names,
+                                to_recipients = email_message["to"],
+                                cc_recipients = email_message["cc"],
+                                bcc_recipients = email_message["bcc"],
+                                html_files = html_file_names)]
         return listofMails
 
 
 from exchangelib import Credentials, Account, Message, FileAttachment
-import os
+import os 
 
 class ExchangeProtocol(ProtocolTemplate):
     
@@ -192,7 +200,7 @@ class ExchangeProtocol(ProtocolTemplate):
         self._logged_in = False
         return True
     
-    def sendEmail(self,email:Email) -> bool:
+    def send_email(self,email:Email) -> bool:
         """Requierment: User is logged in"""
         if not self.logged_in:
             return False
@@ -237,7 +245,7 @@ class ExchangeProtocol(ProtocolTemplate):
             item.save(update_fields = ["is_read"])
 
 
-    def deleteEmail(self, uid:int) -> bool:
+    def delete_email(self, uid:int) -> bool:
         """Requierment: User is logged in
         moves the email in the trash folder"""
         if not self.logged_in:
@@ -246,15 +254,19 @@ class ExchangeProtocol(ProtocolTemplate):
         for item in self.acc.inbox.filter(message_id=uid):
             item.move_to_trash()
     
-    def getEmails(self)->list[Email]:
+    def get_emails(self, date : date)->list[Email]:
         
         if not self.logged_in:
             return None
 
-        attachments = []
-
         result = []
         for item in self.acc.inbox.all():
+            attachments = []
+            for attachment in item.attachments:
+                if isinstance(attachment, FileAttachment):
+                    local_path = os.path.join('attachments', attachment.name)
+                    with open(local_path, 'wb') as f:
+                        f.write(attachment.content)
             result += [create_email(
                 uid = item.message_id, 
                 sender= item.sender,
@@ -281,11 +293,11 @@ def imap_test():
     imap.login("thatchmilo35@gmail.com","mgtszvrhgkphxghm")
     print("IMAP Logged_in: ",imap.logged_in)
 
-    imap.sendEmail(test)
+    imap.send_email(test)
     print("sent?")
     
-    listofmails = imap.getEmails()
-    print("body" ,listofmails[0].body,"id",listofmails[0].id )
+    listofmails = imap.get_emails()
+    #print("body" ,listofmails[0].body,"id",listofmails[0].id )
 
     imap.logout()
     print("IMAP Logged_in: ",imap.logged_in)
@@ -308,8 +320,8 @@ def exchange_test():
     print("Exchange Logged_in: ",exchange.logged_in)
     #exchange.login("praxisprojekt-remail@uni-due.de",keyring.get_password("remail/exchange","praxisprojekt-remail@uni-due.de"))
     print("Exchange Logged_in: ",exchange.logged_in)
-    emails = exchange.getEmails()
-    #exchange.sendEmail(test)
+    emails = exchange.get_emails()
+    #exchange.send_email(test)
     exchange.logout()
     print("Exchange Logged_in: ",exchange.logged_in)
 
@@ -320,8 +332,10 @@ def create_email(uid : str,sender : str, subject: str, body: str, attachments: l
     attachments_class = [Attachment(filename) for filename in attachments]
 
     recipients = [EmailReception(contact = get_contact(recipient), kind = RecipientKind.to) for recipient in to_recipients]
-    recipients += [EmailReception(contact = get_contact(recipient), kind = RecipientKind.cc) for recipient in cc_recipients]
-    recipients += [EmailReception(contact = get_contact(recipient), kind = RecipientKind.bcc) for recipient in bcc_recipients]
+    if cc_recipients:
+        recipients += [EmailReception(contact = get_contact(recipient), kind = RecipientKind.cc) for recipient in cc_recipients]
+    if bcc_recipients:
+        recipients += [EmailReception(contact = get_contact(recipient), kind = RecipientKind.bcc) for recipient in bcc_recipients]
 
     return Email(
         id = uid,
