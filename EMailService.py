@@ -308,7 +308,7 @@ def imap_test():
         
         subject="TestBCC",
         body="Test time!!",
-        recipients=[EmailReception(contact=(Contact(email_address ="praxisprojekt-remail@uni-due.de")), kind=RecipientKind.to),EmailReception(contact=(Contact(email_address ="toadbella@gmail.com")), kind=RecipientKind.bcc),EmailReception(contact=(Contact(email_address ="Karolinebock2409@web.de")), kind=RecipientKind.bcc)],
+        recipients=[EmailReception(contact=(Contact(email_address ="praxisprojekt-remail@uni-due.de")), kind=RecipientKind.to),EmailReception(contact=(Contact(email_address ="toadbella@gmail.com")))],
         #attachments=[Attachment(filename=r"C:\Users\toadb\Documents\ReinventingEmail\test.txt")])
     )
     print("IMAP Logged_in: ",imap.logged_in)
