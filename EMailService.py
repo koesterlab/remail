@@ -6,6 +6,8 @@ from smtplib import SMTP_SSL,SMTP_SSL_PORT
 import email
 from email.message import EmailMessage
 from datetime import datetime
+from exchangelib import Credentials, Account, Message, FileAttachment, EWSDateTime, UTC
+import os 
 
 
 class ProtocolTemplate(ABC):
@@ -46,7 +48,7 @@ class ImapProtocol(ProtocolTemplate):
 
     @property
     def logged_in(self) -> bool:
-        return self.user_passwort != None and self.user_username != None
+        return self.user_passwort is not None and self.user_username is not None
     
     def login(self,user:str, password:str) -> bool:
         self.user_username = user
@@ -82,7 +84,7 @@ class ImapProtocol(ProtocolTemplate):
         msg['From'] = from_email
         msg['To'] = to
         msg['Cc'] = cc
-        msg['Bcc'] = ",".join(bcc)
+        #msg['Bcc'] = ",".join(bcc)
         msg.set_content(email.body)
 
         #attachment
@@ -111,7 +113,7 @@ class ImapProtocol(ProtocolTemplate):
     def get_emails(self, date : datetime = None)->list[Email]:
         listofMails = []
         self.IMAP.select_folder("INBOX")
-        if date != None:
+        if date is not None:
             messages_ids = self.IMAP.search([u'SINCE',date])
         else: 
             messages_ids = self.IMAP.search(["ALL"])
@@ -169,22 +171,6 @@ class ImapProtocol(ProtocolTemplate):
                                 bcc_recipients = email_message["bcc"],
                                 html_files = html_parts)]
         return listofMails
-
-    def get_deleted_email(self)->list[str]:
-        listofUIPsDatenbank = []
-        listofUIPsIMAP = []
-        for mailbox in self.IMAP.list_folders():
-            self.IMAP.select_folder(mailbox)
-            messages_ids = self.IMAP.search(["ALL"])
-            for message_data in self.IMAP.fetch(messages_ids,["RFC822","UID"]).items():
-                listofUIPsIMAP.append(message_data.get(b"UID"))
-        return listofUIPsDatenbank-listofUIPsIMAP
-
-
-
-
-from exchangelib import Credentials, Account, Message, FileAttachment, EWSDateTime, UTC
-import os 
 
 class ExchangeProtocol(ProtocolTemplate):
     
@@ -244,7 +230,8 @@ class ExchangeProtocol(ProtocolTemplate):
         for attachement in email.attachments:
             
             path = attachement.filename
-            if not os.path.exists(path): continue
+            if not os.path.exists(path): 
+                continue
             with open(path,"b+r") as f:
                 content = f.read()
                 att = FileAttachment(name = os.path.basename(path), content = content)
@@ -337,7 +324,7 @@ def exchange_test():
 
 
     #exchange
-    #import keyring
+    import keyring
 
     test = Email(
         
@@ -348,11 +335,11 @@ def exchange_test():
 
 
     print("Exchange Logged_in: ",exchange.logged_in)
-    #exchange.login("praxisprojekt-remail@uni-due.de",keyring.get_password("remail/exchange","praxisprojekt-remail@uni-due.de"))
+    exchange.login("praxisprojekt-remail@uni-due.de",keyring.get_password("remail/exchange","praxisprojekt-remail@uni-due.de"))
     print("Exchange Logged_in: ",exchange.logged_in)
     emails = exchange.get_emails(datetime(2024,11,29,9,29))
     print(emails)
-    #exchange.send_email(test)
+    exchange.send_email(test)
     exchange.logout()
     print("Exchange Logged_in: ",exchange.logged_in)
 
