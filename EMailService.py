@@ -274,7 +274,6 @@ class ExchangeProtocol(ProtocolTemplate):
                 result += self.get_email_exchange(item)
         else:
             start_date = EWSDateTime.from_datetime(date).astimezone(UTC)
-            end_date = EWSDateTime.now().astimezone(UTC)
             for item in self.acc.inbox.filter(datetime_received__gte = start_date):
                 result += self.get_email_exchange(item)
         return result
@@ -286,6 +285,10 @@ class ExchangeProtocol(ProtocolTemplate):
                 local_path = os.path.join('attachments', attachment.name)
                 with open(local_path, 'wb') as f:
                     f.write(attachment.content)
+        
+        ews_datetime_str = item.datetime_received.astimezone()
+        parsed_datetime = datetime.fromisoformat(ews_datetime_str.ewsformat())
+
         return [create_email(
                 uid = item.message_id, 
                 sender= item.sender,
@@ -294,7 +297,9 @@ class ExchangeProtocol(ProtocolTemplate):
                 attachments=attachments, 
                 to_recipients=item.to_recipients,
                 cc_recipients=[],
-                bcc_recipients=[])]
+                bcc_recipients=[],
+                date = parsed_datetime
+                )]
 
 #-------------------------------------------------
 
@@ -338,13 +343,24 @@ def exchange_test():
     print("Exchange Logged_in: ",exchange.logged_in)
     exchange.login("praxisprojekt-remail@uni-due.de",keyring.get_password("remail/exchange","praxisprojekt-remail@uni-due.de"))
     print("Exchange Logged_in: ",exchange.logged_in)
-    emails = exchange.get_emails(datetime(2024,11,29,9,28,tzinfo=UTC))
+    emails = exchange.get_emails(datetime(2024,11,29,9,29))
     print(emails)
     #exchange.send_email(test)
     exchange.logout()
     print("Exchange Logged_in: ",exchange.logged_in)
 
-def create_email(uid : str,sender : str, subject: str, body: str, attachments: list[str], to_recipients: list[str],cc_recipients: list[str],bcc_recipients: list[str], html_files: list[str] = None ) -> Email:
+def create_email(
+        uid : str,
+        sender : str, 
+        subject: str, 
+        body: str, 
+        attachments: list[str], 
+        to_recipients: list[str],
+        cc_recipients: list[str],
+        bcc_recipients: list[str],
+        date: datetime, 
+        html_files: list[str] = None 
+        ) -> Email:
     
     sender_contact = get_contact(sender)
 
@@ -362,7 +378,8 @@ def create_email(uid : str,sender : str, subject: str, body: str, attachments: l
         subject=subject,
         body=body,
         attachments=attachments_class,
-        recipients=recipients
+        recipients=recipients,
+        date=date
     )
 
 def get_contact(email : str) -> Contact:
