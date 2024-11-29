@@ -1,13 +1,14 @@
 from abc import ABC, abstractmethod
 from email2 import Email, EmailReception, Attachment, Contact, RecipientKind
-#from imaplib import IMAP4_SSL
 from imapclient import IMAPClient
 from smtplib import SMTP_SSL,SMTP_SSL_PORT
 import email
 from email.message import EmailMessage
 from datetime import datetime
 from exchangelib import Credentials, Account, Message, FileAttachment, EWSDateTime, UTC
-import os 
+import os
+import keyring
+from bs4 import BeautifulSoup
 
 
 class ProtocolTemplate(ABC):
@@ -120,7 +121,6 @@ class ImapProtocol(ProtocolTemplate):
         for msgid,message_data in self.IMAP.fetch(messages_ids,["RFC822","UID"]).items():
             email_message = email.message_from_bytes(message_data[b"RFC822"])
             Uid = message_data.get(b"UID")
-            html_file_names = []
             attachments_file_names = []
             body = None
             if email_message.is_multipart():
@@ -169,8 +169,10 @@ class ImapProtocol(ProtocolTemplate):
                                 to_recipients = email_message["to"],
                                 cc_recipients = email_message["cc"],
                                 bcc_recipients = email_message["bcc"],
+                                date = email_message["date"],
                                 html_files = html_parts)]
         return listofMails
+
 
 class ExchangeProtocol(ProtocolTemplate):
     
@@ -254,6 +256,15 @@ class ExchangeProtocol(ProtocolTemplate):
         for item in self.acc.inbox.filter(message_id=uid):
             item.move_to_trash()
     
+    def get_deleted_emails(self, uids : list[str]):
+        if not self.logged_in:
+            return None
+        
+        server_uids = [item.message_id for item in self.acc.inbox.all()]
+
+        return uids - server_uids
+
+
     def get_emails(self, date : datetime = None)->list[Email]:
         
         if not self.logged_in:
@@ -269,6 +280,7 @@ class ExchangeProtocol(ProtocolTemplate):
                 result += self.get_email_exchange(item)
         return result
 
+    #Attachments sind leer
     def get_email_exchange(self, item):
         attachments = []
         for attachment in item.attachments:
@@ -276,20 +288,30 @@ class ExchangeProtocol(ProtocolTemplate):
                 local_path = os.path.join('attachments', attachment.name)
                 with open(local_path, 'wb') as f:
                     f.write(attachment.content)
+                    attachments += [local_path]
         
         ews_datetime_str = item.datetime_received.astimezone()
         parsed_datetime = datetime.fromisoformat(ews_datetime_str.ewsformat())
+
+        soup = BeautifulSoup(item.body,"html.parser")
+        if (bool(soup.find())):
+            body = soup.get_text()
+            html = [item.body]
+        else:
+            body = item.body
+            html = []
 
         return [create_email(
                 uid = item.message_id, 
                 sender= item.sender,
                 subject = item.subject, 
-                body = item.body, 
+                body = body, 
                 attachments=attachments, 
                 to_recipients=item.to_recipients,
                 cc_recipients=[],
                 bcc_recipients=[],
-                date = parsed_datetime
+                date = parsed_datetime,
+                html_files=html
                 )]
 
 #-------------------------------------------------
@@ -324,20 +346,19 @@ def exchange_test():
 
 
     #exchange
-    import keyring
 
     test = Email(
         
         subject="Betreff",
         body="World",
-        recipients=[EmailReception(contact=(Contact(email_address ="thatchmilo35@gmail.com")))],
+        recipients=[EmailReception(contact=(Contact(email_address ="thatchmilo35@gmail.com")),kind=RecipientKind.to)],
         attachments=[Attachment(filename="path")])
 
 
     print("Exchange Logged_in: ",exchange.logged_in)
     exchange.login("praxisprojekt-remail@uni-due.de",keyring.get_password("remail/exchange","praxisprojekt-remail@uni-due.de"))
     print("Exchange Logged_in: ",exchange.logged_in)
-    emails = exchange.get_emails(datetime(2024,11,29,9,29))
+    emails = exchange.get_emails(datetime(2024,11,29,10,15))
     print(emails)
     exchange.send_email(test)
     exchange.logout()
@@ -357,7 +378,7 @@ def create_email(
         ) -> Email:
     
     sender_contact = get_contact(sender)
-
+    print("Hallo",attachments)
     attachments_class = [Attachment(filename) for filename in attachments]
 
     recipients = [EmailReception(contact = get_contact(recipient), kind = RecipientKind.to) for recipient in to_recipients]
@@ -381,8 +402,8 @@ def get_contact(email : str) -> Contact:
 
 if __name__ == "__main__":
     print("Starte Tests")
-    imap_test()
-    #exchange_test()
+    #imap_test()
+    exchange_test()
     print("Tests beendet")
     
     
