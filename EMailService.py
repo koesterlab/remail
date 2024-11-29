@@ -5,6 +5,7 @@ from imapclient import IMAPClient
 from smtplib import SMTP_SSL,SMTP_SSL_PORT
 import email
 from email.message import EmailMessage
+from datetime import date
 
 
 class ProtocolTemplate(ABC):
@@ -29,7 +30,7 @@ class ProtocolTemplate(ABC):
         """Requierment: User is logged in"""
         pass
     @abstractmethod
-    def get_emails(self)->list[Email]:
+    def get_emails(self, date : date)->list[Email]:
         pass
 
 class ImapProtocol(ProtocolTemplate):
@@ -108,7 +109,7 @@ class ImapProtocol(ProtocolTemplate):
             if len(messages_ids)!= 0:
                     self.IMAP.delete_messages()
     
-    def get_emails(self)->list[Email]:
+    def get_emails(self, date : date)->list[Email]:
         listofMails = []
         self.IMAP.select_folder("INBOX")
         messages_ids = self.IMAP.search(["ALL"])
@@ -253,7 +254,7 @@ class ExchangeProtocol(ProtocolTemplate):
         for item in self.acc.inbox.filter(message_id=uid):
             item.move_to_trash()
     
-    def get_emails(self)->list[Email]:
+    def get_emails(self, date : date)->list[Email]:
         
         if not self.logged_in:
             return None
