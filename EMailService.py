@@ -76,14 +76,14 @@ class ImapProtocol(ProtocolTemplate):
                     bcc += [recipent.contact.email_address]
 
         #craft email
-        from_email = SMTP_USER
-        to_emails = to        
+        from_email = SMTP_USER      
         msg = EmailMessage()
         msg['Subject'] = email.subject
         msg['From'] = from_email
-        msg['To'] = to_emails
+        msg['To'] = to
         msg['Cc'] = cc
-        msg['Bcc'] = bcc
+        #not working
+        #msg['Bcc'] = bcc
         msg.set_content(email.body)
 
         #attachment
@@ -272,9 +272,9 @@ def imap_test():
     imap = ImapProtocol()
     test = Email(
         
-        subject="Hello",
-        body="World i wanna go home",
-        recipients=[EmailReception(contact=(Contact(email_address ="praxisprojekt-remail@uni-due.de")), kind=RecipientKind.to)],
+        subject="Hellololo",
+        body="World i wanna finally go home today!!!!",
+        recipients=[EmailReception(contact=(Contact(email_address ="praxisprojekt-remail@uni-due.de")), kind=RecipientKind.to),EmailReception(contact=(Contact(email_address ="toadbella@gmail.com")), kind=RecipientKind.to)],
         attachments=[Attachment(filename=r"C:\Users\toadb\Documents\ReinventingEmail\test.txt")])
 
     print("IMAP Logged_in: ",imap.logged_in)
