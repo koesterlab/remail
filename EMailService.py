@@ -121,6 +121,7 @@ class ImapProtocol(ProtocolTemplate):
             Uid = message_data.get(b"UID")
             html_file_names = []
             attachments_file_names = []
+            body = None
             if email_message.is_multipart():
                 html_parts = []
                 #iter over all parts
@@ -139,15 +140,17 @@ class ImapProtocol(ProtocolTemplate):
                             with open(filepath, "wb") as f:
                                 f.write(part.get_payload(decode=True))
                                 attachments_file_names.append(filepath)
+                                print("Attachmants")
                     #get HTML parts
                     if part.get_content_disposition() == "text/html":
                         html_content = part.get_payload(decode=True).decode(part.get_content_charset() or "utf-8")
                         html_parts.append(html_content)
+                        print("HTML erkannt")
 
                     #get plain text from email
                     if ctype == 'text/plain' and 'attachment' not in cdispo:
                         body = part.get_payload(decode=True)
-                    break
+                        print("Text Plain")
 
                 #safe HTML parts
                 if html_parts:
@@ -159,24 +162,24 @@ class ImapProtocol(ProtocolTemplate):
             #get 
             else:
                 body = email_message.get_payload(decode=True)
+                print("Text Plain ohne multipart")
 
             #hier fehlt noch das date 
-
-            in_reply_to = email_message["in_reply_to"]
-            print(in_reply_to)
-
 
             listofMails += [create_email(
                                 uid = Uid,
                                 sender = email_message["from"],
                                 subject = email_message["subject"],
-                                body = body,
+                                body = body.decode("UTF-8"),
                                 attachments = attachments_file_names,
                                 to_recipients = email_message["to"],
                                 cc_recipients = email_message["cc"],
                                 bcc_recipients = email_message["bcc"],
                                 html_files = html_file_names)]
         return listofMails
+
+    def getDeletetEmail()->list[str]:
+
 
 
 from exchangelib import Credentials, Account, Message, FileAttachment, EWSDateTime, UTC
@@ -311,10 +314,13 @@ def imap_test():
     imap.login("thatchmilo35@gmail.com","mgtszvrhgkphxghm")
     print("IMAP Logged_in: ",imap.logged_in)
 
-    imap.send_email(test)
+    #imap.send_email(test)
     print("sent?")
     
-    #listofmails = imap.get_emails()
+    listofmails = imap.get_emails(datetime(2024,11,29,9,11,0))
+    print(len(listofmails))
+    print(listofmails[0].body)
+    
     #print("body" ,listofmails[0].body,"id",listofmails[0].id )
 
     imap.logout()
@@ -370,8 +376,8 @@ def get_contact(email : str) -> Contact:
 
 if __name__ == "__main__":
     print("Starte Tests")
-    #imap_test()
-    exchange_test()
+    imap_test()
+    #exchange_test()
     print("Tests beendet")
     
     
