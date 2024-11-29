@@ -82,8 +82,7 @@ class ImapProtocol(ProtocolTemplate):
         msg['From'] = from_email
         msg['To'] = to
         msg['Cc'] = cc
-        #not working
-        #msg['Bcc'] = bcc
+        msg['Bcc'] = ",".join(bcc)
         msg.set_content(email.body)
 
         #attachment
@@ -307,9 +306,9 @@ def imap_test():
     imap = ImapProtocol()
     test = Email(
         
-        subject="Hellololololo",
+        subject="TestBCC",
         body="Test time!!",
-        recipients=[EmailReception(contact=(Contact(email_address ="praxisprojekt-remail@uni-due.de")), kind=RecipientKind.to),EmailReception(contact=(Contact(email_address ="toadbella@gmail.com")), kind=RecipientKind.to)],
+        recipients=[EmailReception(contact=(Contact(email_address ="praxisprojekt-remail@uni-due.de")), kind=RecipientKind.to),EmailReception(contact=(Contact(email_address ="toadbella@gmail.com")), kind=RecipientKind.bcc),EmailReception(contact=(Contact(email_address ="Karolinebock2409@web.de")), kind=RecipientKind.bcc)],
         #attachments=[Attachment(filename=r"C:\Users\toadb\Documents\ReinventingEmail\test.txt")])
     )
     print("IMAP Logged_in: ",imap.logged_in)
@@ -330,7 +329,7 @@ def exchange_test():
 
 
     #exchange
-    import keyring
+    #import keyring
 
     test = Email(
         
@@ -341,7 +340,7 @@ def exchange_test():
 
 
     print("Exchange Logged_in: ",exchange.logged_in)
-    exchange.login("praxisprojekt-remail@uni-due.de",keyring.get_password("remail/exchange","praxisprojekt-remail@uni-due.de"))
+    #exchange.login("praxisprojekt-remail@uni-due.de",keyring.get_password("remail/exchange","praxisprojekt-remail@uni-due.de"))
     print("Exchange Logged_in: ",exchange.logged_in)
     emails = exchange.get_emails(datetime(2024,11,29,9,29))
     print(emails)
@@ -387,8 +386,8 @@ def get_contact(email : str) -> Contact:
 
 if __name__ == "__main__":
     print("Starte Tests")
-    #imap_test()
-    exchange_test()
+    imap_test()
+    #exchange_test()
     print("Tests beendet")
     
     
