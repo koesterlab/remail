@@ -151,13 +151,6 @@ class ImapProtocol(ProtocolTemplate):
                         body = part.get_payload(decode=True)
                         print("Text Plain")
 
-                #safe HTML parts
-                if html_parts:
-                    for i,html in enumerate(html_parts):
-                        htmlfilename = f"email_{Uid}_part_{i+1}.html"
-                        with open(htmlfilename,"w",encoding="utf-8") as f:
-                            f.write(html)
-                            html_file_names.append(htmlfilename)
             #get 
             else:
                 body = email_message.get_payload(decode=True)
@@ -174,10 +167,10 @@ class ImapProtocol(ProtocolTemplate):
                                 to_recipients = email_message["to"],
                                 cc_recipients = email_message["cc"],
                                 bcc_recipients = email_message["bcc"],
-                                html_files = html_file_names)]
+                                html_files = html_parts)]
         return listofMails
 
-    def getDeletedEmail(self)->list[str]:
+    def get_deleted_email(self)->list[str]:
         listofUIPsDatenbank = []
         listofUIPsIMAP = []
         for mailbox in self.IMAP.list_folders():
