@@ -18,6 +18,9 @@ imapclient = "^3.0.1"
 llama-cpp-python = "^0.3.2"
 llama-index-vector-stores-chroma = "^0.4.0"
 llama-index-embeddings-huggingface = "^0.4.0"
+transformers = "^4.46.3"
+sentence-transformers = "^3.3.1"
+chromadb = "^0.5.23"
 
 
 [build-system]

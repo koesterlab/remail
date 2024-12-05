@@ -1,11 +1,11 @@
 import streamlit as st
 from llama_cpp import Llama
-import chromadb as db
-from chromadb.utils import embedding_functions
 from llama_index.core import VectorStoreIndex, SimpleDirectoryReader
 from llama_index.vector_stores.chroma import ChromaVectorStore
 from llama_index.core import StorageContext
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
+import chromadb as db
+from transformers import AutoTokenizer, AutoModel
 
 # Streamlit App Configuration
 st.set_page_config(page_title="🦙💬 Llama-cpp Chatbot")
@@ -14,8 +14,12 @@ st.set_page_config(page_title="🦙💬 Llama-cpp Chatbot")
 MODEL_PATH = "./.llama/Llama-3.2-1B-Instruct-f16.gguf"  # Update with your model file path
 llama = Llama(model_path=MODEL_PATH, n_ctx=512, n_batch=128)
 
+# Hugging Face Embedding Model
+EMBEDDING_MODEL_PATH = "./local-embedding-model"
+embed_model = HuggingFaceEmbedding(model_name=EMBEDDING_MODEL_PATH)
+
 def generate_llama_response(prompt_input):
-    """Generates a response using Llama-cpp"""
+    """Generates a response using Llama-cpp."""
     dialogue = "You are a helpful assistant. You do not respond as 'User' or pretend to be 'User'. You only respond once as 'Assistant'.\n"
     for message in st.session_state.messages:
         if message["role"] == "user":
@@ -31,37 +35,30 @@ def generate_llama_response(prompt_input):
     except Exception as e:
         return f"An error occurred: {str(e)}"
 
-def setup_vector_database(directory_path="./remail/oz.txt", collection_name="quickstart", embed_model_name="./.llama/pytorch_model.bin"):
-    """
-    Sets up the Chroma vector database with embedded documents.
-    
-    Args:
-        directory_path (str): Path to the directory or file containing documents.
-        collection_name (str): Name of the Chroma collection.
-        embed_model_name (str): Name of the HuggingFace embedding model.
-
-    Returns:
-        VectorStoreIndex: The initialized vector store index with embedded documents.
-    """
+def setup_vector_database(directory_path="./src/vectorData", collection_name="quickstart"):
     try:
-        # Create Chroma client and collection
-        chroma_client = db.EphemeralClient()
-        chroma_collection = chroma_client.create_collection(collection_name)
-
-        # Define embedding model
-        embed_model = HuggingFaceEmbedding(model_name=embed_model_name)
-
-        # Load documents from the specified directory
+         # Load documents
         documents = SimpleDirectoryReader(directory_path).load_data()
+        print("Data loaded!")
+        print(f"Number of documents loaded: {len(documents)}")
+        for i, doc in enumerate(documents[:5]):  # Print first 5 documents
+            print(f"Document {i + 1}: {doc.text[:20]}...")  # Show first 200 characters
 
-        # Initialize ChromaVectorStore and load data
+        # Initialize ChromaDB client and collection
+        chroma_client = db.PersistentClient(path="./db/chroma_db")
+        chroma_collection = chroma_client.get_or_create_collection(collection_name)
         vector_store = ChromaVectorStore(chroma_collection=chroma_collection)
         storage_context = StorageContext.from_defaults(vector_store=vector_store)
+        print("DB initialized!")
 
-        # Create and return the index
-        return VectorStoreIndex.from_documents(
+        # Create VectorStoreIndex from documents
+        index = VectorStoreIndex.from_documents(
             documents, storage_context=storage_context, embed_model=embed_model
         )
+        print("VectorStore created!")
+
+        print(f"Chroma collection size: {len(chroma_collection.get()["documents"])}")
+        return index
     except Exception as e:
         st.error(f"Error setting up vector database: {e}")
         return None
@@ -72,7 +69,6 @@ index = setup_vector_database()
 # Ensure the index is properly loaded
 if index is None:
     st.warning("Vector database setup failed. The chatbot might not work as intended.")
-
 
 # Sidebar Configuration
 with st.sidebar:
@@ -108,3 +104,30 @@ if prompt := st.chat_input():
             response = generate_llama_response(prompt)
             st.write(response)
             st.session_state.messages.append({"role": "assistant", "content": response})
+
+
+#For testing
+def test_query(index, query_text="What is this document about?"):
+    """
+    Tests querying the vector database to ensure data is being used.
+
+    Args:
+        index (VectorStoreIndex): The loaded index.
+        query_text (str): The test query to run against the index.
+
+    Returns:
+        str: The top result or a failure message.
+    """
+    try:
+        response = index.query(query_text, mode="default")
+        print(f"Query: {query_text}")
+        print(f"Response: {response}")
+        return response
+    except Exception as e:
+        print(f"Query test failed: {e}")
+        return None
+
+# After setting up the database, run the test
+if index:
+    test_query(index, query_text="Tell me about the documents loaded.")
+
