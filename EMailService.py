@@ -52,15 +52,26 @@ class ImapProtocol(ProtocolTemplate):
         return self.user_passwort is not None and self.user_username is not None
     
     def login(self,user:str, password:str) -> bool:
-        self.user_username = user
-        self.user_passwort = password
-        self.IMAP.login(user, password)
-    
+        if self.logged_in: return True
+        
+        try:
+            self.user_username = user
+            self.user_passwort = password
+            self.IMAP.login(user, password)
+            return True
+        except Exception:
+            return False
+
+
     def logout(self) -> bool:
-        self.IMAP.logout()
-        self.user_passwort = None
-        self.user_username = None
-    
+        try:
+            self.IMAP.logout()
+            self.user_passwort = None
+            self.user_username = None
+            return True
+        except Exception:
+            return False
+        
     def send_email(self, email:Email) -> bool:
         """Requierment: User is logged in"""
         SMTP_USER = self.user_username
@@ -106,6 +117,7 @@ class ImapProtocol(ProtocolTemplate):
 
     def delete_email(self, uid:int) -> bool:
         """Requierment: User is logged in"""
+        if not self.logged_in: return False
         for mailbox in self.IMAP.list_folders():
             self.IMAP.select_folder(mailbox)
             messages_ids = self.IMAP.search(["UID",uid])
@@ -113,6 +125,7 @@ class ImapProtocol(ProtocolTemplate):
                     self.IMAP.delete_messages()
     
     def get_emails(self, date : datetime = None)->list[Email]:
+        if not self.logged_in: return None
         listofMails = []
         self.IMAP.select_folder("INBOX")
         if date is not None:
@@ -175,6 +188,7 @@ class ImapProtocol(ProtocolTemplate):
         return listofMails
 
     def get_deleted_emails(self,uids:list[str])->list[str]:
+        if not self.logged_in: return None
         listofUIPsIMAP = []
         for mailbox in self.IMAP.list_folders():
             self.IMAP.select_folder(mailbox)
@@ -185,6 +199,7 @@ class ImapProtocol(ProtocolTemplate):
         return uids-listofUIPsIMAP
     
     def mark_email(self,uid:str,read:bool):
+        if not self.logged_in: return
         if read:
             self.IMAP.add_flags(uid,["SEEN"])
         else:
