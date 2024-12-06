@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from email_object import Email, EmailReception, Attachment, Contact, RecipientKind
+from remail.email_api.object import Email, EmailReception, Attachment, Contact, RecipientKind
 from imapclient import IMAPClient
 from smtplib import SMTP_SSL,SMTP_SSL_PORT
 import email
@@ -479,11 +479,11 @@ def change_credentials_imap():
     password = input("Gebe das IMAPpasswort ein, um es auf deinem Rechner zu hinterlegen: ")
     keyring.set_password("remail/IMAP","thatchmilo35@gmail.com",password)
 
-if __name__ == "__main__":
+def test_mails():
     save_credentials()
     print("Starte Tests")
     imap_test()
-    #exchange_test()
+    exchange_test()
     print("Tests beendet")
     
     
