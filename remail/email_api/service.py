@@ -53,23 +53,24 @@ class ImapProtocol(ProtocolTemplate):
     #email address
     user_username = None
     #or imappassword
-    user_passwort = None
+    user_password = None
     host = "imap.gmail.com"
+    def __init__(self):
+        self.IMAP = IMAPClient(self.host,use_uid=True)
 
-    IMAP = IMAPClient(host,use_uid=True)
     SMTP_HOST = host
 
     @property
     def logged_in(self) -> bool:
-        return self.user_passwort is not None and self.user_username is not None
+        return self.user_password is not None and self.user_username is not None
     
     def login(self) -> bool:
         if self.logged_in: 
             return True
         try:
             self.user_username = "thatchmilo35@gmail.com"
-            self.user_passwort = keyring.get_password("remail/IMAP","thatchmilo35@gmail.com")
-            self.IMAP.login(self.user_username, self.user_passwort)
+            self.user_password = keyring.get_password("remail/IMAP","thatchmilo35@gmail.com")
+            self.IMAP.login(self.user_username, self.user_password)
             return True
         except Exception:
             return False
@@ -78,7 +79,7 @@ class ImapProtocol(ProtocolTemplate):
     def logout(self) -> bool:
         try:
             self.IMAP.logout()
-            self.user_passwort = None
+            self.user_password = None
             self.user_username = None
             return True
         except Exception:
@@ -139,7 +140,8 @@ class ImapProtocol(ProtocolTemplate):
             self.IMAP.select_folder(mailbox)
             messages_ids = self.IMAP.search(["UID",uid])
             if len(messages_ids)!= 0:
-                    self.IMAP.delete_messages()
+                    self.IMAP.delete_messages(messages_ids)
+                    self.IMAP.expunge()
     
     def get_emails(self, date : datetime = None)->list[Email]:
         if not self.logged_in: 
@@ -188,11 +190,16 @@ class ImapProtocol(ProtocolTemplate):
 
             #hier fehlt noch das date 
 
+            if body:
+                body_content = body.decode("UTF-8")
+            else:
+                body_content = ""
+
             listofMails += [create_email(
                                 uid = Uid,
                                 sender = email_message["from"],
                                 subject = email_message["subject"],
-                                body = body.decode("UTF-8"),
+                                body = body_content,
                                 attachments = attachments_file_names,
                                 to_recipients = email_message["to"],
                                 cc_recipients = email_message["cc"],
@@ -211,7 +218,7 @@ class ImapProtocol(ProtocolTemplate):
             for message_data in self.IMAP.fetch(messages_ids,["RFC822","UID"]).items():
                 listofUIPsIMAP.append(message_data.get(b"UID"))
             self.IMAP.close_folder(mailbox)
-        return uids-listofUIPsIMAP
+        return list(set(uids)-set(listofUIPsIMAP))
     
     def mark_email(self,uid:str,read:bool) -> bool:
         if not self.logged_in: 
@@ -320,7 +327,7 @@ class ExchangeProtocol(ProtocolTemplate):
         
         server_uids = [item.message_id for item in self.acc.inbox.all()]
 
-        return uids - server_uids
+        return list(set(uids) - set(server_uids))
 
 
     def get_emails(self, date : datetime = None)->list[Email]:
