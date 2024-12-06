@@ -52,8 +52,8 @@ class ImapProtocol(ProtocolTemplate):
         return self.user_passwort is not None and self.user_username is not None
     
     def login(self,user:str, password:str) -> bool:
-        if self.logged_in: return True
-        
+        if self.logged_in: 
+            return True
         try:
             self.user_username = user
             self.user_passwort = password
@@ -117,7 +117,8 @@ class ImapProtocol(ProtocolTemplate):
 
     def delete_email(self, uid:int) -> bool:
         """Requierment: User is logged in"""
-        if not self.logged_in: return False
+        if not self.logged_in: 
+            return False
         for mailbox in self.IMAP.list_folders():
             self.IMAP.select_folder(mailbox)
             messages_ids = self.IMAP.search(["UID",uid])
@@ -125,7 +126,8 @@ class ImapProtocol(ProtocolTemplate):
                     self.IMAP.delete_messages()
     
     def get_emails(self, date : datetime = None)->list[Email]:
-        if not self.logged_in: return None
+        if not self.logged_in: 
+            return None
         listofMails = []
         self.IMAP.select_folder("INBOX")
         if date is not None:
@@ -188,7 +190,8 @@ class ImapProtocol(ProtocolTemplate):
         return listofMails
 
     def get_deleted_emails(self,uids:list[str])->list[str]:
-        if not self.logged_in: return None
+        if not self.logged_in: 
+            return None
         listofUIPsIMAP = []
         for mailbox in self.IMAP.list_folders():
             self.IMAP.select_folder(mailbox)
@@ -199,7 +202,8 @@ class ImapProtocol(ProtocolTemplate):
         return uids-listofUIPsIMAP
     
     def mark_email(self,uid:str,read:bool):
-        if not self.logged_in: return
+        if not self.logged_in: 
+            return False
         if read:
             self.IMAP.add_flags(uid,["SEEN"])
         else:
@@ -278,9 +282,12 @@ class ExchangeProtocol(ProtocolTemplate):
         m.send()
 
     def mark_email(self, uid, read : bool):
+        if not self.logged_in:
+            return False
         for item in self.acc.inbox.filter(message_id=uid):
             item.is_read = read
             item.save(update_fields = ["is_read"])
+        return True
 
 
     def delete_email(self, uid:int) -> bool:
@@ -396,7 +403,7 @@ def exchange_test():
     print("Exchange Logged_in: ",exchange.logged_in)
     emails = exchange.get_emails()
     print(emails)
-    #exchange.send_email(test)
+    exchange.send_email(test)
     exchange.logout()
     print("Exchange Logged_in: ",exchange.logged_in)
 
