@@ -19,7 +19,7 @@ class ProtocolTemplate(ABC):
         pass
     
     @abstractmethod
-    def login(self,user:str, password:str) -> bool:
+    def login(self) -> bool:
         pass
 
     @abstractmethod
@@ -63,13 +63,13 @@ class ImapProtocol(ProtocolTemplate):
     def logged_in(self) -> bool:
         return self.user_passwort is not None and self.user_username is not None
     
-    def login(self,user:str, password:str) -> bool:
+    def login(self) -> bool:
         if self.logged_in: 
             return True
         try:
-            self.user_username = user
-            self.user_passwort = password
-            self.IMAP.login(user, password)
+            self.user_username = "thatchmilo35@gmail.com"
+            self.user_passwort = keyring.get_password("remail/IMAP","thatchmilo35@gmail.com")
+            self.IMAP.login(self.user_username, self.user_passwort)
             return True
         except Exception:
             return False
@@ -173,22 +173,18 @@ class ImapProtocol(ProtocolTemplate):
                             with open(filepath, "wb") as f:
                                 f.write(part.get_payload(decode=True))
                                 attachments_file_names.append(filepath)
-                                print("Attachmants")
                     #get HTML parts
                     if part.get_content_disposition() == "text/html":
                         html_content = part.get_payload(decode=True).decode(part.get_content_charset() or "utf-8")
                         html_parts.append(html_content)
-                        print("HTML erkannt")
 
                     #get plain text from email
                     if ctype == 'text/plain' and 'attachment' not in cdispo:
                         body = part.get_payload(decode=True)
-                        print("Text Plain")
 
             #get 
             else:
                 body = email_message.get_payload(decode=True)
-                print("Text Plain ohne multipart")
 
             #hier fehlt noch das date 
 
@@ -239,7 +235,7 @@ class ExchangeProtocol(ProtocolTemplate):
     def logged_in(self) -> bool:
         return self._logged_in
 
-    def login(self,user:str, password:str) -> bool:
+    def login(self) -> bool:
         if self.logged_in:
             return True
         
@@ -389,10 +385,10 @@ def imap_test():
         #attachments=[Attachment(filename=r"C:\Users\toadb\Documents\ReinventingEmail\test.txt")])
     )
     print("IMAP Logged_in: ",imap.logged_in)
-    imap.login("thatchmilo35@gmail.com",keyring.get_password("remail/IMAP","thatchmilo35@gmail.com"))
+    imap.login()
     print("IMAP Logged_in: ",imap.logged_in)
 
-    imap.send_email(test)
+    #imap.send_email(test)
     
     listofmails = imap.get_emails(datetime(2024,11,29,9,11,0))
     #print(len(listofmails))
@@ -418,7 +414,7 @@ def exchange_test():
 
 
     
-    exchange.login("","")
+    exchange.login()
     print("Exchange Logged_in: ",exchange.logged_in)
     emails = exchange.get_emails()
     print(emails)
@@ -486,8 +482,8 @@ def change_credentials_imap():
 if __name__ == "__main__":
     save_credentials()
     print("Starte Tests")
-    imap_test()
-    exchange_test()
+    #imap_test()
+    #exchange_test()
     print("Tests beendet")
     
     
