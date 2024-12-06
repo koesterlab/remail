@@ -86,6 +86,10 @@ class ImapProtocol(ProtocolTemplate):
         
     def send_email(self, email:Email) -> bool:
         """Requierment: User is logged in"""
+
+        if not self.logged_in:
+            return False
+
         SMTP_USER = self.user_username
         SMTP_PASS = self.user_passwort
 
