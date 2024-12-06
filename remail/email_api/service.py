@@ -92,7 +92,7 @@ class ImapProtocol(ProtocolTemplate):
             return False
 
         SMTP_USER = self.user_username
-        SMTP_PASS = self.user_passwort
+        SMTP_PASS = self.user_password
 
         to = []
         cc = []
@@ -386,53 +386,6 @@ class ExchangeProtocol(ProtocolTemplate):
 
 #-------------------------------------------------
 
-def imap_test():
-    imap = ImapProtocol()
-    test = Email(
-        
-        subject="TestBCC",
-        body="Test time!!",
-        recipients=[EmailReception(contact=(Contact(email_address ="praxisprojekt-remail@uni-due.de")), kind=RecipientKind.to)],
-        #attachments=[Attachment(filename=r"C:\Users\toadb\Documents\ReinventingEmail\test.txt")]
-    )
-    print("IMAP Logged_in: ",imap.logged_in)
-    imap.login()
-    print("IMAP Logged_in: ",imap.logged_in)
-
-    imap.send_email(test)
-    
-    #listofmails = imap.get_emails()
-    #print(len(listofmails))
-    #print(listofmails[0].body)
-    
-    #print("body" ,listofmails[0].body,"id",listofmails[0].id )
-
-    imap.logout()
-    print("IMAP Logged_in: ",imap.logged_in)
-
-def exchange_test():
-    exchange = ExchangeProtocol()
-
-
-    #exchange
-
-    test = Email(
-        
-        subject="Betreff",
-        body="World",
-        recipients=[EmailReception(contact=(Contact(email_address ="thatchmilo35@gmail.com")),kind=RecipientKind.to)],
-        attachments=[Attachment(filename="path")])
-
-
-    
-    exchange.login()
-    print("Exchange Logged_in: ",exchange.logged_in)
-    emails = exchange.get_emails()
-    print(emails)
-    exchange.send_email(test)
-    exchange.logout()
-    
-
 def create_email(
         uid : str,
         sender : str, 
@@ -491,11 +444,47 @@ def change_credentials_imap():
     keyring.set_password("remail/IMAP","thatchmilo35@gmail.com",password)
 
 def test_mails():
-    save_credentials()
-    print("Starte Tests")
-    imap_test()
-    exchange_test()
-    print("Tests beendet")
+    imap_test_email = Email(
+        
+        subject="test_imap_mail",
+        body="Test!!",
+        recipients=[EmailReception(contact=(Contact(email_address ="praxisprojekt-remail@uni-due.de")), kind=RecipientKind.to)],
+        #attachments=[Attachment(filename=r"C:\Users\toadb\Documents\ReinventingEmail\test.txt")]
+    )
+    exchange_test_email = Email(
+        
+        subject="test_exchange_mail",
+        body="Test!!",
+        recipients=[EmailReception(contact=(Contact(email_address ="thatchmilo35@gmail.com")), kind=RecipientKind.to)],
+        #attachments=[Attachment(filename=r"C:\Users\toadb\Documents\ReinventingEmail\test.txt")]
+    )
+    time = datetime.now()
+    imap = ImapProtocol()
+    exchange = ExchangeProtocol()
+    #Logins
+    assert imap.login() == True
+    assert imap.logged_in == True
+    assert exchange.login() == True
+    assert exchange.logged_in == True
+    # senden mit exchange und auslesen mit imap
+    assert exchange.send_email(exchange_test_email) == True
+    test_mail = imap.get_emails(time)[0]
+    assert test_mail.subject == "test_exchange_mail"
+    #löschen der Email mit imap
+    assert imap.delete_email(test_mail.id) == True
+    assert len(imap.get_emails(time)) == 0
+    # senden mit imap und auslesen mit exchange
+    assert imap.send_email(imap_test_email) == True
+    test_mail = exchange.get_emails(time)[0]
+    assert test_mail.subject == "test_imap_mail"
+    #löschen der Email mit exchange
+    assert exchange.delete_email(test_mail.id) == True
+    assert len(exchange.get_emails(time)) == 0
+    #Logout
+    assert imap.logout() == True
+    assert imap.logged_in == False
+    assert exchange.logout() == True
+    assert exchange.logged_in == False
     
     
 
