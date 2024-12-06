@@ -98,10 +98,10 @@ if st.button("Register"):
     else:
         st.success("Registration successful!") 
         # Neue Seite simulieren
-        st.experimental_set_query_params(page="frontend")
+        st.experimental_set_query_params(page="home")
         st.markdown(
             """
-            <meta http-equiv="refresh" content="0; url=/frontend" />
+            <meta http-equiv="refresh" content="0; url=/home" />
             """,
             unsafe_allow_html=True,
         )
