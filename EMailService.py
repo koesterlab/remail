@@ -173,22 +173,18 @@ class ImapProtocol(ProtocolTemplate):
                             with open(filepath, "wb") as f:
                                 f.write(part.get_payload(decode=True))
                                 attachments_file_names.append(filepath)
-                                print("Attachmants")
                     #get HTML parts
                     if part.get_content_disposition() == "text/html":
                         html_content = part.get_payload(decode=True).decode(part.get_content_charset() or "utf-8")
                         html_parts.append(html_content)
-                        print("HTML erkannt")
 
                     #get plain text from email
                     if ctype == 'text/plain' and 'attachment' not in cdispo:
                         body = part.get_payload(decode=True)
-                        print("Text Plain")
 
             #get 
             else:
                 body = email_message.get_payload(decode=True)
-                print("Text Plain ohne multipart")
 
             #hier fehlt noch das date 
 
