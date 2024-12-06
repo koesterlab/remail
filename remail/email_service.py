@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from email2 import Email, EmailReception, Attachment, Contact, RecipientKind
+from email_object import Email, EmailReception, Attachment, Contact, RecipientKind
 from imapclient import IMAPClient
 from smtplib import SMTP_SSL,SMTP_SSL_PORT
 import email
@@ -332,6 +332,7 @@ class ExchangeProtocol(ProtocolTemplate):
         if not self.logged_in:
             return None
 
+        os.makedirs("attachments", exist_ok=True)
         result = []
         if not date:
             for item in self.acc.inbox.all():
@@ -393,7 +394,7 @@ def imap_test():
 
     imap.send_email(test)
     
-    #listofmails = imap.get_emails(datetime(2024,11,29,9,11,0))
+    listofmails = imap.get_emails(datetime(2024,11,29,9,11,0))
     #print(len(listofmails))
     #print(listofmails[0].body)
     
@@ -485,8 +486,8 @@ def change_credentials_imap():
 if __name__ == "__main__":
     save_credentials()
     print("Starte Tests")
-    #imap_test()
-    #exchange_test()
+    imap_test()
+    exchange_test()
     print("Tests beendet")
     
     
