@@ -21,19 +21,31 @@ class ProtocolTemplate(ABC):
     @abstractmethod
     def login(self,user:str, password:str) -> bool:
         pass
+
     @abstractmethod
     def logout(self) -> bool:
         pass
+
     @abstractmethod
     def send_email(self,email: Email) -> bool:
         """Requierment: User is logged in"""
         pass
+
     @abstractmethod
-    def delete_email(self, uid:int) -> bool:
+    def get_deleted_emails(self, uids: list[str]) -> list[str]:
+        pass
+
+    @abstractmethod
+    def mark_email(self, uid: str, read: bool) -> bool:
+        pass
+
+    @abstractmethod
+    def delete_email(self, uid: str) -> bool:
         """Requierment: User is logged in"""
         pass
+
     @abstractmethod
-    def get_emails(self, date : datetime = None)->list[Email]:
+    def get_emails(self, date: datetime = None)->list[Email]:
         pass
 
 class ImapProtocol(ProtocolTemplate):
@@ -113,9 +125,9 @@ class ImapProtocol(ProtocolTemplate):
         
         #disconnect
         smtp_server.quit()
-        pass
+        return True
 
-    def delete_email(self, uid:int) -> bool:
+    def delete_email(self, uid:str) -> bool:
         """Requierment: User is logged in"""
         if not self.logged_in: 
             return False
@@ -201,7 +213,7 @@ class ImapProtocol(ProtocolTemplate):
             self.IMAP.close_folder(mailbox)
         return uids-listofUIPsIMAP
     
-    def mark_email(self,uid:str,read:bool):
+    def mark_email(self,uid:str,read:bool) -> bool:
         if not self.logged_in: 
             return False
         if read:
@@ -281,7 +293,7 @@ class ExchangeProtocol(ProtocolTemplate):
 
         m.send()
 
-    def mark_email(self, uid, read : bool):
+    def mark_email(self, uid: str, read : bool) -> bool:
         if not self.logged_in:
             return False
         for item in self.acc.inbox.filter(message_id=uid):
@@ -290,7 +302,7 @@ class ExchangeProtocol(ProtocolTemplate):
         return True
 
 
-    def delete_email(self, uid:int) -> bool:
+    def delete_email(self, uid:str) -> bool:
         """Requierment: User is logged in
         moves the email in the trash folder"""
         if not self.logged_in:
@@ -299,7 +311,7 @@ class ExchangeProtocol(ProtocolTemplate):
         for item in self.acc.inbox.filter(message_id=uid):
             item.move_to_trash()
     
-    def get_deleted_emails(self, uids : list[str]):
+    def get_deleted_emails(self, uids : list[str]) -> list[str]:
         if not self.logged_in:
             return None
         
@@ -316,15 +328,15 @@ class ExchangeProtocol(ProtocolTemplate):
         result = []
         if not date:
             for item in self.acc.inbox.all():
-                result += self.get_email_exchange(item)
+                result += self._get_email_exchange(item)
         else:
             start_date = EWSDateTime.from_datetime(date).astimezone(UTC)
             for item in self.acc.inbox.filter(datetime_received__gte = start_date):
-                result += self.get_email_exchange(item)
+                result += self._get_email_exchange(item)
         return result
 
     #Attachments sind leer
-    def get_email_exchange(self, item):
+    def _get_email_exchange(self, item):
         attachments = []
         for attachment in item.attachments:
             if isinstance(attachment, FileAttachment):
@@ -398,14 +410,14 @@ def exchange_test():
         attachments=[Attachment(filename="path")])
 
 
-    print("Exchange Logged_in: ",exchange.logged_in)
+    
     exchange.login("praxisprojekt-remail@uni-due.de",keyring.get_password("remail/exchange","praxisprojekt-remail@uni-due.de"))
     print("Exchange Logged_in: ",exchange.logged_in)
     emails = exchange.get_emails()
     print(emails)
     exchange.send_email(test)
     exchange.logout()
-    print("Exchange Logged_in: ",exchange.logged_in)
+    
 
 def create_email(
         uid : str,
@@ -431,7 +443,6 @@ def create_email(
         recipients += [EmailReception(contact = get_contact(recipient), kind = RecipientKind.bcc) for recipient in bcc_recipients]
 
     email =  Email(
-        id = uid,
         sender_contact= sender_contact,
         subject=subject,
         body=body,
