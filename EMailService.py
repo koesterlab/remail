@@ -373,7 +373,6 @@ def imap_test():
     print("IMAP Logged_in: ",imap.logged_in)
 
     imap.send_email(test)
-    print("sent?")
     
     #listofmails = imap.get_emails(datetime(2024,11,29,9,11,0))
     #print(len(listofmails))
