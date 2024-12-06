@@ -26,10 +26,6 @@ emails_data = {
 # Setting page layout
 st.set_page_config(page_title="Remail", layout="wide")
 
-# Header with tabs
-tabs = ["Home", "Settings", "View", "Help", "Message", "Insert", "Format Text", "Options"]
-selected_tab = st.tabs(tabs)
-
 # Sidebar (Left side)
 with st.sidebar:
     st.header("Emails")
