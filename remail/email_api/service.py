@@ -119,13 +119,15 @@ class ImapProtocol(ProtocolTemplate):
 
         #attachment
         for att in email.attachments:
-            with open(att.filename, "rb") as file:
+            filename = os.path.basename(att.filename)  # Sanitize filename
+            if not os.path.exists(att.filename) or not os.path.isfile(att.filename):
+                continue
+            with open(os.path.abspath(att.filename), "rb") as file:
                 file_data = file.read()
-                name = os.path.basename(file.name)
                 type = mimetypes.guess_type(file.name)[0].split("/")
                 main_type = type[0]
                 sub_type = type[1]
-            msg.add_attachment(file_data, maintype = main_type, subtype = sub_type, filename = name)
+            msg.add_attachment(file_data, maintype = main_type, subtype = sub_type, filename = filename)
 
         #connect/authenticate
         smtp_server = SMTP_SSL(self.SMTP_HOST, port = SMTP_SSL_PORT)
@@ -449,7 +451,7 @@ def test_mails():
         subject="test_imap_mail",
         body="Test!!",
         recipients=[EmailReception(contact=(Contact(email_address ="praxisprojekt-remail@uni-due.de")), kind=RecipientKind.to)],
-        #attachments=[Attachment(filename=r"C:\Users\toadb\Documents\ReinventingEmail\test.txt")]
+        attachments=[Attachment(filename=r"C:\Users\toadb\Documents\ReinventingEmail\test.txt")]
     )
     exchange_test_email = Email(
         
