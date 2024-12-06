@@ -5,7 +5,6 @@ description = ""
 authors = ["Your Name <you@example.com>"]
 readme = "README.md"
 license = "GPL-3.0-or-later"
-packages = [{include = "src"}]
 
 [tool.poetry.dependencies]
 python = "^3.12"
@@ -18,7 +17,7 @@ streamlit = "^1.40.0"
 imapclient = "^3.0.1"
 
 [tool.poetry.scripts]
-my-script = "src.frontend:start"
+my-script = "remail.frontend:start"
 
 [build-system]
 requires = ["poetry-core"]
