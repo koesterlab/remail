@@ -14,7 +14,7 @@ st.markdown(
     }
     .custom-text2 {
         text-align: center;
-        color:purple;
+        color:orange;
     }
     .custom-button {
         background-color: #4CAF50; /* Grün */
@@ -53,7 +53,7 @@ st.markdown(
 )
 st.markdown(
     """
-        <p class= custom-text2> Welcome to our new EMail App </p>
+        <p class= custom-text2><i> Welcome to our new EMail App </i></p>
         <br>
         <br>
         <br>
