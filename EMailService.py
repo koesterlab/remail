@@ -362,7 +362,7 @@ def imap_test():
         #attachments=[Attachment(filename=r"C:\Users\toadb\Documents\ReinventingEmail\test.txt")])
     )
     print("IMAP Logged_in: ",imap.logged_in)
-    imap.login("thatchmilo35@gmail.com","mgtszvrhgkphxghm")
+    imap.login("thatchmilo35@gmail.com",keyring.get_password("remail/IMAP","thatchmilo35@gmail.com"))
     print("IMAP Logged_in: ",imap.logged_in)
 
     imap.send_email(test)
@@ -443,14 +443,21 @@ def get_contact(email : str) -> Contact:
 
 def save_credentials():
     
-    password_test = keyring.get_password("remail/exchange","praxisprojekt-remail@uni-due.de")
-    if not password_test:
+    password_exchange = keyring.get_password("remail/exchange","praxisprojekt-remail@uni-due.de")
+    password_imap = keyring.get_password("remail/IMAP","thatchmilo35@gmail.com")
+    if not password_exchange:
         password = input("Gebe das Exchangepasswort ein, um es auf deinem Rechner zu hinterlegen: ")
         keyring.set_password("remail/exchange","praxisprojekt-remail@uni-due.de",password)
+    if not password_imap:
+        password = input("Gebe das IMAPpasswort ein, um es auf deinem Rechner zu hinterlegen: ")
+        keyring.set_password("remail/IMAP","thatchmilo35@gmail.com",password)
 
-def change_credentials():
+def change_credentials_exchange():
     password = input("Gebe das Exchangepasswort ein, um es auf deinem Rechner zu hinterlegen: ")
     keyring.set_password("remail/exchange","praxisprojekt-remail@uni-due.de",password)
+def change_credentials_imap():
+    password = input("Gebe das IMAPpasswort ein, um es auf deinem Rechner zu hinterlegen: ")
+    keyring.set_password("remail/IMAP","thatchmilo35@gmail.com",password)
 
 if __name__ == "__main__":
     save_credentials()
