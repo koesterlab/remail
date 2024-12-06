@@ -10,6 +10,7 @@ import os
 import keyring
 from bs4 import BeautifulSoup
 import mimetypes
+import pytest
 
 class ProtocolTemplate(ABC):
     
@@ -464,29 +465,29 @@ def test_mails():
     imap = ImapProtocol()
     exchange = ExchangeProtocol()
     #Logins
-    assert imap.login() == True
-    assert imap.logged_in == True
-    assert exchange.login() == True
-    assert exchange.logged_in == True
+    assert imap.login()
+    assert imap.logged_in
+    assert exchange.login()
+    assert exchange.logged_in
     # senden mit exchange und auslesen mit imap
-    assert exchange.send_email(exchange_test_email) == True
+    assert exchange.send_email(exchange_test_email)
     test_mail = imap.get_emails(time)[0]
     assert test_mail.subject == "test_exchange_mail"
     #löschen der Email mit imap
-    assert imap.delete_email(test_mail.id) == True
+    assert imap.delete_email(test_mail.id)
     assert len(imap.get_emails(time)) == 0
     # senden mit imap und auslesen mit exchange
-    assert imap.send_email(imap_test_email) == True
+    assert imap.send_email(imap_test_email)
     test_mail = exchange.get_emails(time)[0]
     assert test_mail.subject == "test_imap_mail"
     #löschen der Email mit exchange
-    assert exchange.delete_email(test_mail.id) == True
+    assert exchange.delete_email(test_mail.id)
     assert len(exchange.get_emails(time)) == 0
     #Logout
-    assert imap.logout() == True
-    assert imap.logged_in == False
-    assert exchange.logout() == True
-    assert exchange.logged_in == False
+    assert imap.logout()
+    assert not imap.logged_in
+    assert exchange.logout()
+    assert not exchange.logged_in
     
     
 
