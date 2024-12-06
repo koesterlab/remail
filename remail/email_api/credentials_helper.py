@@ -1,8 +1,9 @@
-from enum import Enum
+from enum import StrEnum
+import os
 
-class Protocol(Enum):
-    IMAP = 0,
-    EXCHANGE = 1
+class Protocol(StrEnum):
+    IMAP = "IMAP",
+    EXCHANGE = "EXCHANGE"
 
 _protocol = Protocol.IMAP
 
@@ -16,10 +17,10 @@ def protocol(value):
     _protocol = value
 
 def get_email():
-    pass
+    return os.environ.get("email"+_protocol)
 
 def get_password():
-    pass
+    return os.environ.get("password"+_protocol)
 
 def get_username():
-    pass
+    return os.environ.get("username"+_protocol)
