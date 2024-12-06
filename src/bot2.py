@@ -4,15 +4,10 @@ from llama_index.core import VectorStoreIndex, SimpleDirectoryReader
 from llama_index.vector_stores.chroma import ChromaVectorStore
 from llama_index.core import StorageContext
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
+from llama_index.core.query_engine import CustomQueryEngine
+from llama_index.core.retrievers import BaseRetriever
+from llama_index.core.response_synthesizers import BaseSynthesizer
 import chromadb as db
-import openai
-
-# Replace 'all-MiniLM-L6-v2' with your desired model name
-# model = SentenceTransformer('all-MiniLM-L6-v2')
-# model.save('./local-embedding-model')
-
-# Disable OpenAI usage by explicitly setting API key to None
-openai.api_key = None  # Explicitly disable OpenAI models
 
 # Streamlit App Configuration
 st.set_page_config(page_title="🦙💬 Llama-cpp Chatbot")
@@ -24,6 +19,44 @@ llama = Llama(model_path=MODEL_PATH, n_ctx=8192, n_batch=128)
 # Hugging Face Embedding Model
 EMBEDDING_MODEL_PATH = "./local-embedding-model"
 embed_model = HuggingFaceEmbedding(model_name=EMBEDDING_MODEL_PATH)
+
+# Custom Synthesizer Implementation
+class SimpleSynthesizer(BaseSynthesizer):
+    def _get_prompts(self, query_str, nodes):
+        # Generate a prompt from the query and the retrieved documents (nodes)
+        prompt = f"Question: {query_str}\n\nDocuments:\n"
+        for node in nodes:
+            prompt += f"{node.text[:200]}...\n"  # Display a snippet of the document
+        prompt += "\nAnswer:"
+        return [prompt]
+
+    def _update_prompts(self, prompts, new_text):
+        # Update the prompts with new text (if applicable)
+        prompts[0] += "\n" + new_text
+        return prompts
+
+    async def aget_response(self, prompts):
+        # Asynchronous method to generate a response (not used here, but needs to be implemented)
+        return self.get_response(prompts)
+
+    def get_response(self, prompts):
+        # Generate a response from the LLM based on the prompt
+        response = llama(prompts[0], max_tokens=150, temperature=0.7)
+        return response["choices"][0]["text"].strip()
+
+# RAG Query Engine (Retriever + Synthesizer)
+class RAGQueryEngine(CustomQueryEngine):
+    """RAG Query Engine."""
+
+    retriever: BaseRetriever
+    response_synthesizer: SimpleSynthesizer
+
+    def custom_query(self, query_str: str):
+        # Retrieve relevant documents from the vector store
+        nodes = self.retriever.retrieve(query_str)
+        # Synthesize a response using the retrieved documents
+        response_obj = self.response_synthesizer.synthesize(query_str, nodes)
+        return response_obj
 
 def generate_llama_response(prompt_input):
     """Generates a response using Llama-cpp."""
@@ -73,31 +106,6 @@ def setup_vector_database(directory_path="./src/vectorData", collection_name="qu
         st.error(f"Error setting up vector database: {e}")
         return None
 
-def test_query(index, query_text="What is this document about?"):
-    """
-    Tests querying the vector database to ensure data is being used.
-
-    Args:
-        index (VectorStoreIndex): The loaded index.
-        query_text (str): The test query to run against the index.
-
-    Returns:
-        str: The top result or a failure message.
-    """
-    try:
-        # Ensure LLM is disabled in the query engine as well
-        query_engine = index.as_query_engine(llm=None)  # Explicitly disable LLM during querying
-
-        # Perform the query
-        response = query_engine.query(query_text)
-
-        # Print the query and response for verification
-        print(f"Query: {query_text}")
-        print(f"Response: {response}")
-        return response.response if response else "No response from query engine."
-    except Exception as e:
-        print(f"Query test failed: {e}")
-        return None
 
 # Initialize the vector database
 index = setup_vector_database()
@@ -107,9 +115,7 @@ if index is None:
     st.warning("Vector database setup failed. The chatbot might not work as intended.")
 else:
     # Run a test query after the index is created
-    print("Running test query...")
-    test_response = test_query(index, query_text="What is this document about?")
-    print(f"Test Response: {test_response}")
+    print("idex is loaded")
 
 # Sidebar Configuration
 with st.sidebar:
