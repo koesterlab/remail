@@ -154,9 +154,9 @@ class ImapProtocol(ProtocolTemplate):
             email_message = email.message_from_bytes(message_data[b"RFC822"])
             Uid = message_data.get(b"UID")
             attachments_file_names = []
+            html_parts = []
             body = None
-            if email_message.is_multipart():
-                html_parts = []
+            if email_message.is_multipart():                
                 #iter over all parts
                 for part in email_message.walk():
                     ctype = part.get_content_type()
@@ -168,7 +168,7 @@ class ImapProtocol(ProtocolTemplate):
 
                         #safe attachments
                         if filename:
-                            filepath = os.path.join("attachments", filename)
+                            filepath = os.path.join("attachments", os.path.basename(filename))
                             os.makedirs("attachments", exist_ok=True)
                             with open(filepath, "wb") as f:
                                 f.write(part.get_payload(decode=True))
@@ -390,7 +390,7 @@ def imap_test():
 
     #imap.send_email(test)
     
-    listofmails = imap.get_emails(datetime(2024,11,29,9,11,0))
+    listofmails = imap.get_emails()
     #print(len(listofmails))
     #print(listofmails[0].body)
     
@@ -482,7 +482,7 @@ def change_credentials_imap():
 if __name__ == "__main__":
     save_credentials()
     print("Starte Tests")
-    #imap_test()
+    imap_test()
     #exchange_test()
     print("Tests beendet")
     
