@@ -442,9 +442,9 @@ def get_contact(email : str) -> Contact:
     return Contact(email_address=email)
 
 def save_credentials():
-    try:
-        keyring.get_password("remail/exchange","praxisprojekt-remail@uni-due.de")
-    except Exception:
+    
+    password_test = keyring.get_password("remail/exchange","praxisprojekt-remail@uni-due.de")
+    if not password_test:
         password = input("Gebe das Exchangepasswort ein, um es auf deinem Rechner zu hinterlegen: ")
         keyring.set_password("remail/exchange","praxisprojekt-remail@uni-due.de",password)
 
