@@ -417,7 +417,7 @@ def exchange_test():
 
 
     
-    exchange.login("","")
+    exchange.login()
     print("Exchange Logged_in: ",exchange.logged_in)
     emails = exchange.get_emails()
     print(emails)
