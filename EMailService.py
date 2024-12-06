@@ -239,6 +239,9 @@ class ExchangeProtocol(ProtocolTemplate):
         if self.logged_in:
             return True
         
+        user = "praxisprojekt-remail@uni-due.de"
+        password = keyring.get_password("remail/exchange","praxisprojekt-remail@uni-due.de")
+
         try:
             self.cred = Credentials("ude-1729267167",password)
             self.acc = Account(user, credentials=self.cred, autodiscover=True)
@@ -410,7 +413,7 @@ def exchange_test():
 
 
     
-    exchange.login("praxisprojekt-remail@uni-due.de",keyring.get_password("remail/exchange","praxisprojekt-remail@uni-due.de"))
+    exchange.login("","")
     print("Exchange Logged_in: ",exchange.logged_in)
     emails = exchange.get_emails()
     print(emails)
@@ -432,7 +435,6 @@ def create_email(
         ) -> Email:
     
     sender_contact = get_contact(sender)
-    print("Hallo",attachments)
     
 
     recipients = [EmailReception(contact = get_contact(recipient), kind = RecipientKind.to) for recipient in to_recipients]
