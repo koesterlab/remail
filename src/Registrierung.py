@@ -30,7 +30,6 @@ st.markdown(
         border-radius: 8px;
     }
     .register-button {
-        background-color: #4CAF50; /* Grün */
         color: white;
         padding: 10px 20px;
         text-align: center;
@@ -98,10 +97,10 @@ if st.button("Register"):
     else:
         st.success("Registration successful!") 
         # Neue Seite simulieren
-        st.experimental_set_query_params(page="home")
+        st.experimental_set_query_params(page="Home")
         st.markdown(
             """
-            <meta http-equiv="refresh" content="0; url=/home" />
+            <meta http-equiv="refresh" content="0; url=/Home" />
             """,
             unsafe_allow_html=True,
         )
