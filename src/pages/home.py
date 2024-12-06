@@ -38,7 +38,7 @@ col1, col2 = st.columns([1, 2])
 
 # Left column: List senders
 with col1:
-    st.subheader(f"Emails Sorted by Sender")
+    st.subheader("Emails Sorted by Sender")
     selected_sender = None
     for sender in emails_data.keys():
         if st.button(sender):
