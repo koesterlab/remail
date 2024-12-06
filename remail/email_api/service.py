@@ -9,7 +9,7 @@ from exchangelib import Credentials, Account, Message, FileAttachment, EWSDateTi
 import os
 import keyring
 from bs4 import BeautifulSoup
-
+import mimetypes
 
 class ProtocolTemplate(ABC):
     
@@ -119,9 +119,13 @@ class ImapProtocol(ProtocolTemplate):
 
         #attachment
         for att in email.attachments:
-            with open(att.filename, "rb") as f:
-                file_data = f.read()
-            msg.add_attachment(file_data, maintype = "text", subtype = "plain", filename = "test.txt")
+            with open(att.filename, "rb") as file:
+                file_data = file.read()
+                name = os.path.basename(file.name)
+                type = mimetypes.guess_type(file.name)[0].split("/")
+                main_type = type[0]
+                sub_type = type[1]
+            msg.add_attachment(file_data, maintype = main_type, subtype = sub_type, filename = name)
 
         #connect/authenticate
         smtp_server = SMTP_SSL(self.SMTP_HOST, port = SMTP_SSL_PORT)
@@ -389,15 +393,15 @@ def imap_test():
         subject="TestBCC",
         body="Test time!!",
         recipients=[EmailReception(contact=(Contact(email_address ="praxisprojekt-remail@uni-due.de")), kind=RecipientKind.to)],
-        #attachments=[Attachment(filename=r"C:\Users\toadb\Documents\ReinventingEmail\test.txt")])
+        #attachments=[Attachment(filename=r"C:\Users\toadb\Documents\ReinventingEmail\test.txt")]
     )
     print("IMAP Logged_in: ",imap.logged_in)
     imap.login()
     print("IMAP Logged_in: ",imap.logged_in)
 
-    #imap.send_email(test)
+    imap.send_email(test)
     
-    listofmails = imap.get_emails()
+    #listofmails = imap.get_emails()
     #print(len(listofmails))
     #print(listofmails[0].body)
     
@@ -459,7 +463,7 @@ def create_email(
         date=date
     )
 
-    attachments_class = [Attachment(filename = filename, email=email) for filename in attachments]
+    attachments_class = [Attachment(filename = filename, email = email) for filename in attachments]
 
     email.attachments = attachments_class
 
