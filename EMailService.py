@@ -85,7 +85,8 @@ class ImapProtocol(ProtocolTemplate):
         msg['From'] = from_email
         msg['To'] = to
         msg['Cc'] = cc
-        #msg['Bcc'] = ",".join(bcc)
+        if len(bcc) > 0:
+            msg['Bcc'] = ",".join(bcc)
         msg.set_content(email.body)
 
         #attachment
@@ -339,19 +340,19 @@ def imap_test():
         
         subject="TestBCC",
         body="Test time!!",
-        recipients=[EmailReception(contact=(Contact(email_address ="praxisprojekt-remail@uni-due.de")), kind=RecipientKind.to),EmailReception(contact=(Contact(email_address ="toadbella@gmail.com")))],
+        recipients=[EmailReception(contact=(Contact(email_address ="praxisprojekt-remail@uni-due.de")), kind=RecipientKind.to)],
         #attachments=[Attachment(filename=r"C:\Users\toadb\Documents\ReinventingEmail\test.txt")])
     )
     print("IMAP Logged_in: ",imap.logged_in)
     imap.login("thatchmilo35@gmail.com","mgtszvrhgkphxghm")
     print("IMAP Logged_in: ",imap.logged_in)
 
-    #imap.send_email(test)
+    imap.send_email(test)
     print("sent?")
     
-    listofmails = imap.get_emails(datetime(2024,11,29,9,11,0))
-    print(len(listofmails))
-    print(listofmails[0].body)
+    #listofmails = imap.get_emails(datetime(2024,11,29,9,11,0))
+    #print(len(listofmails))
+    #print(listofmails[0].body)
     
     #print("body" ,listofmails[0].body,"id",listofmails[0].id )
 
@@ -419,8 +420,8 @@ def get_contact(email : str) -> Contact:
 
 if __name__ == "__main__":
     print("Starte Tests")
-    #imap_test()
-    exchange_test()
+    imap_test()
+    #exchange_test()
     print("Tests beendet")
     
     
