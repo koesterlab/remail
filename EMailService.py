@@ -205,12 +205,15 @@ class ExchangeProtocol(ProtocolTemplate):
         return self._logged_in
 
     def login(self,user:str, password:str) -> bool:
+        if self.logged_in:
+            return True
+        
         try:
             self.cred = Credentials("ude-1729267167",password)
             self.acc = Account(user, credentials=self.cred, autodiscover=True)
             self._logged_in = True
             return True
-        except:
+        except Exception:
             return False
     
     def logout(self) -> bool:
@@ -376,9 +379,9 @@ def exchange_test():
     print("Exchange Logged_in: ",exchange.logged_in)
     exchange.login("praxisprojekt-remail@uni-due.de",keyring.get_password("remail/exchange","praxisprojekt-remail@uni-due.de"))
     print("Exchange Logged_in: ",exchange.logged_in)
-    emails = exchange.get_emails(datetime(2024,11,29,10,15))
+    emails = exchange.get_emails()
     print(emails)
-    exchange.send_email(test)
+    #exchange.send_email(test)
     exchange.logout()
     print("Exchange Logged_in: ",exchange.logged_in)
 
@@ -397,7 +400,7 @@ def create_email(
     
     sender_contact = get_contact(sender)
     print("Hallo",attachments)
-    attachments_class = [Attachment(filename) for filename in attachments]
+    
 
     recipients = [EmailReception(contact = get_contact(recipient), kind = RecipientKind.to) for recipient in to_recipients]
     if cc_recipients:
@@ -405,22 +408,39 @@ def create_email(
     if bcc_recipients:
         recipients += [EmailReception(contact = get_contact(recipient), kind = RecipientKind.bcc) for recipient in bcc_recipients]
 
-    return Email(
+    email =  Email(
         id = uid,
         sender_contact= sender_contact,
         subject=subject,
         body=body,
-        attachments=attachments_class,
         recipients=recipients,
         date=date
     )
 
+    attachments_class = [Attachment(filename = filename, email=email) for filename in attachments]
+
+    email.attachments = attachments_class
+
+    return email
+
 def get_contact(email : str) -> Contact:
     return Contact(email_address=email)
 
+def save_credentials():
+    try:
+        keyring.get_password("remail/exchange","praxisprojekt-remail@uni-due.de")
+    except Exception:
+        password = input("Gebe das Exchangepasswort ein, um es auf deinem Rechner zu hinterlegen: ")
+        keyring.set_password("remail/exchange","praxisprojekt-remail@uni-due.de",password)
+
+def change_credentials():
+    password = input("Gebe das Exchangepasswort ein, um es auf deinem Rechner zu hinterlegen: ")
+    keyring.set_password("remail/exchange","praxisprojekt-remail@uni-due.de",password)
+
 if __name__ == "__main__":
+    save_credentials()
     print("Starte Tests")
-    imap_test()
+    #imap_test()
     #exchange_test()
     print("Tests beendet")
     
