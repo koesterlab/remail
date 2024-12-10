@@ -10,9 +10,13 @@ import os
 import keyring
 from bs4 import BeautifulSoup
 import mimetypes
+from werkzeug.utils import secure_filename
+import tempfile
 from email.header import decode_header
 from email.utils import parsedate_to_datetime
 from tzlocal import get_localzone
+
+
 
 class ProtocolTemplate(ABC):
     
@@ -122,10 +126,11 @@ class ImapProtocol(ProtocolTemplate):
         msg.set_content(email.body)
 
         #attachment
+
         for att in email.attachments:
             filename = os.path.basename(att.filename)  # Sanitize filename
             if not os.path.exists(att.filename) or not os.path.isfile(att.filename):
-                continue
+                raise FileNotFoundError()
             with open(os.path.abspath(att.filename), "rb") as file:
                 file_data = file.read()
                 type = mimetypes.guess_type(file.name)[0].split("/")
@@ -148,7 +153,6 @@ class ImapProtocol(ProtocolTemplate):
             return False
         folder_names = [folder[2] for folder in self.IMAP.list_folders()]
         for mailbox in folder_names:
-            print(mailbox)
             self.IMAP.select_folder(mailbox)
             messages_ids = self.IMAP.search(['HEADER', 'Message-ID', uid])
             if messages_ids:
@@ -189,11 +193,7 @@ class ImapProtocol(ProtocolTemplate):
                             file, encoding = decode_header(filename)[0]
                             if isinstance(file, bytes):
                                 filename = file.decode(encoding or "utf-8")
-                            filepath = os.path.join("attachments", os.path.basename(filename))
-                            os.makedirs("attachments", exist_ok=True)
-                            with open(filepath, "wb") as f:
-                                f.write(part.get_payload(decode=True))
-                                attachments_file_names.append(filepath)
+                                attachments_file_names += [safe_file(filename,part.get_payload(decode=True))]
                     #get HTML parts
                     if part.get_content_disposition() == "text/html":
                         html_content = part.get_payload(decode=True).decode(part.get_content_charset() or "utf-8")
@@ -375,10 +375,7 @@ class ExchangeProtocol(ProtocolTemplate):
         attachments = []
         for attachment in item.attachments:
             if isinstance(attachment, FileAttachment):
-                local_path = os.path.join('attachments', attachment.name)
-                with open(local_path, 'wb') as f:
-                    f.write(attachment.content)
-                    attachments += [local_path]
+                attachments += [safe_file(attachment.name,attachment.content)]
         
         ews_datetime_str = item.datetime_received.astimezone()
         parsed_datetime = datetime.fromisoformat(ews_datetime_str.ewsformat())
@@ -398,8 +395,8 @@ class ExchangeProtocol(ProtocolTemplate):
                 body = body, 
                 attachments=attachments, 
                 to_recipients=item.to_recipients,
-                cc_recipients=[],
-                bcc_recipients=[],
+                cc_recipients=item.cc_recipients if item.cc_recipients else [],
+                bcc_recipients=item.bcc_recipients if item.bcc_recipients else [],
                 date = parsed_datetime,
                 html_files=html
                 )]
@@ -463,6 +460,19 @@ def change_credentials_exchange():
 def change_credentials_imap():
     password = input("Gebe das IMAPpasswort ein, um es auf deinem Rechner zu hinterlegen: ")
     keyring.set_password("remail/IMAP","thatchmilo35@gmail.com",password)
+
+def safe_file(filename:str,content:bytes)->str:
+    if len(content) > max_size:
+        raise BufferError
+    max_size = 10*1024*1024 # muss noch von wo anders bestimmt werden
+    temp_dir = tempfile.gettempdir()
+    safe_filename = secure_filename(filename)
+    filepath = os.path.join(temp_dir,safe_filename)
+    try:
+        with open(filepath,"wb") as f:
+            f.write(content)
+    except Exception as e:
+        raise e
 
 
 if __name__ == "__main__":
