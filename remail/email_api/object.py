@@ -46,6 +46,7 @@ class Attachment(SQLModel, table=True):
 
 class Email(SQLModel, table=True):
     id: Optional[int] = id_field("email")
+    message_id: str
     sender_id: int = Field(foreign_key="contact.id")
     sender: Contact = Relationship(back_populates="sent_emails")
     subject: str

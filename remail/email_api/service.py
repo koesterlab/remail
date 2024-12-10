@@ -97,11 +97,11 @@ class ImapProtocol(ProtocolTemplate):
         except Exception:
             return False
         
-    def send_email(self, email:Email) -> bool:
+    def send_email(self, email:Email):
         """Requierement: User is logged in"""
 
         if not self.logged_in:
-            return False
+            raise ee.NotLoggedIn()
 
         SMTP_USER = self.user_username
         SMTP_PASS = self.user_password
@@ -149,12 +149,11 @@ class ImapProtocol(ProtocolTemplate):
         
         #disconnect
         smtp_server.quit()
-        return True
 
-    def delete_email(self, uid:str) -> bool:
+    def delete_email(self, uid:str):
         """Requierment: User is logged in"""
         if not self.logged_in: 
-            return False
+            raise ee.NotLoggedIn()
         folder_names = [folder[2] for folder in self.IMAP.list_folders()]
         for mailbox in folder_names:
             self.IMAP.select_folder(mailbox)
@@ -166,7 +165,7 @@ class ImapProtocol(ProtocolTemplate):
     
     def get_emails(self, date : datetime = None)->list[Email]:
         if not self.logged_in: 
-            return None
+            raise ee.NotLoggedIn()
         listofMails = []
         self.IMAP.select_folder("INBOX")
         if date is not None:
@@ -233,7 +232,7 @@ class ImapProtocol(ProtocolTemplate):
 
     def get_deleted_emails(self,uids:list[str])->list[str]:
         if not self.logged_in: 
-            return None
+            raise ee.NotLoggedIn()
         listofUIPsIMAP = []
         for mailbox in [folder[2] for folder in self.IMAP.list_folders()]:
             print(mailbox)
@@ -245,9 +244,9 @@ class ImapProtocol(ProtocolTemplate):
             self.IMAP.close_folder(mailbox)
         return list(set(uids)-set(listofUIPsIMAP))
     
-    def mark_email(self,uid:str,read:bool) -> bool:
+    def mark_email(self,uid:str,read:bool):
         if not self.logged_in: 
-            return False
+           raise ee.NotLoggedIn()
         if read:
             self.IMAP.add_flags(uid,["SEEN"])
         else:
@@ -433,7 +432,7 @@ def create_email(
         recipients += [EmailReception(contact = get_contact(recipient), kind = RecipientKind.bcc) for recipient in bcc_recipients]
 
     email =  Email(
-        id = uid,
+        message_id=uid,
         sender_contact= sender_contact,
         subject=subject,
         body=body,

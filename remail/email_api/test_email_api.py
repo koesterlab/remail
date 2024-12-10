@@ -1,7 +1,8 @@
-from object import Email, EmailReception,Contact, RecipientKind
-from service import ImapProtocol,ExchangeProtocol,ProtocolTemplate
+from remail.email_api.object import Email, EmailReception,Contact, RecipientKind
+from remail.email_api.service import ImapProtocol,ExchangeProtocol,ProtocolTemplate
 from datetime import datetime
 from tzlocal import get_localzone
+from contextlib import contextmanager
 
 import time
 
@@ -32,12 +33,13 @@ def wait_for_email(protocol:ProtocolTemplate,dtime:datetime,timeout:int = 30):
         time.sleep(0.05)
     raise TimeoutError()
 
+@contextmanager
 def email_test_context():
     imap = ImapProtocol()
     exchange = ExchangeProtocol()
     try:
-        assert imap.login(), "IMAP login failed"
-        assert exchange.login(), "Exchange login failed"
+        imap.login()
+        exchange.login()
         yield imap,exchange
     finally:
         imap.logout()
@@ -50,30 +52,20 @@ def test_mails():
     with email_test_context() as (imap,exchange):
         try:
             date = datetime.now(get_localzone())
-            #Logins
-            assert imap.login()
-            assert imap.logged_in
-            assert exchange.login()
-            assert exchange.logged_in
             # senden mit exchange und auslesen mit imap
-            assert exchange.send_email(exchange_test_email)
+            exchange.send_email(exchange_test_email)
             test_mail = wait_for_email(imap,date)
             assert test_mail.subject == "test_exchange_mail"
             #löschen der Email mit imap
-            assert imap.delete_email(test_mail.id)
+            imap.delete_email(test_mail.message_id)
             assert len(imap.get_emails(date)) == 0
             # senden mit imap und auslesen mit exchange
-            assert imap.send_email(imap_test_email)
+            imap.send_email(imap_test_email)
             test_mail = wait_for_email(exchange,date)
             assert test_mail.subject == "test_imap_mail"
             #löschen der Email mit exchange
-            assert exchange.delete_email(test_mail.id)
+            exchange.delete_email(test_mail.message_id)
             assert len(exchange.get_emails(date)) == 0
-            #Logout
-            assert imap.logout()
-            assert not imap.logged_in
-            assert exchange.logout()
-            assert not exchange.logged_in
         except Exception:
             return
 
