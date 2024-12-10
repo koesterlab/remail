@@ -38,13 +38,13 @@ def get_password():
     keyring.set_password("remail/"+_protocol,"praxisprojekt-remail@uni-due.de",password)
 
 def get_username():
-    username = os.environ.get("USERNAME")
+    username = os.environ.get("REMAIL_USERNAME")
     if username:
         return username
     return "ude-1729267167"
 
 def get_host():
-    host = os.environ.get("HOST"+_protocol)
+    host = os.environ.get("REMAIL_HOST")
     if host:
         return host
     return "imap.gmail.com"

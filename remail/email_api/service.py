@@ -3,6 +3,7 @@ from remail.email_api.object import Email, EmailReception, Attachment, Contact, 
 from imapclient import IMAPClient
 from smtplib import SMTP_SSL,SMTP_SSL_PORT
 import email
+from imapclient.exceptions import LoginError
 from email.message import EmailMessage
 from datetime import datetime
 from exchangelib import Credentials, Account, Message, FileAttachment, EWSDateTime, UTC, errors
@@ -37,7 +38,7 @@ class ProtocolTemplate(ABC):
 
     @abstractmethod
     def send_email(self,email: Email) -> bool:
-        """Requierment: User is logged in"""
+        """Requierement: User is logged in"""
         pass
 
     @abstractmethod
@@ -50,7 +51,7 @@ class ProtocolTemplate(ABC):
 
     @abstractmethod
     def delete_email(self, uid: str) -> bool:
-        """Requierment: User is logged in"""
+        """Requierement: User is logged in"""
         pass
 
     @abstractmethod
@@ -81,9 +82,10 @@ class ImapProtocol(ProtocolTemplate):
             self.user_username = "thatchmilo35@gmail.com"
             self.user_password = keyring.get_password("remail/IMAP","thatchmilo35@gmail.com")
             self.IMAP.login(self.user_username, self.user_password)
-            return True
-        except Exception:
-            return False
+        except LoginError:
+            raise ee.InvalidLoginData() from None
+        except Exception as e:
+            raise e
 
 
     def logout(self) -> bool:
@@ -96,7 +98,7 @@ class ImapProtocol(ProtocolTemplate):
             return False
         
     def send_email(self, email:Email) -> bool:
-        """Requierment: User is logged in"""
+        """Requierement: User is logged in"""
 
         if not self.logged_in:
             return False
@@ -275,10 +277,10 @@ class ExchangeProtocol(ProtocolTemplate):
             self.cred = Credentials(username,password)
             self.acc = Account(user, credentials=self.cred, autodiscover=True)
             self._logged_in = True
-        except ValueError as e:
+        except ValueError:
             #hopefully this works and does not catch any other ValueErrors
             raise ee.InvalidEmail() from None
-        except errors.UnauthorizedError as e:
+        except errors.UnauthorizedError:
             raise ee.InvalidLoginData() from None
         except Exception as e:
             raise e
