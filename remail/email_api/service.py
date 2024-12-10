@@ -275,10 +275,10 @@ class ExchangeProtocol(ProtocolTemplate):
             self.cred = Credentials(username,password)
             self.acc = Account(user, credentials=self.cred, autodiscover=True)
             self._logged_in = True
-        except ValueError as e:
+        except ValueError:
             #hopefully this works and does not catch any other ValueErrors
             raise ee.InvalidEmail() from None
-        except errors.UnauthorizedError as e:
+        except errors.UnauthorizedError:
             raise ee.InvalidLoginData() from None
         except Exception as e:
             raise e
