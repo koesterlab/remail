@@ -1,5 +1,8 @@
-from object import Email, EmailReception, Attachment, Contact, RecipientKind
-from service import *
+from object import Email, EmailReception,Contact, RecipientKind
+from service import ImapProtocol,ExchangeProtocol
+from datetime import datetime
+from tzlocal import get_localzone
+
 import time
 
 

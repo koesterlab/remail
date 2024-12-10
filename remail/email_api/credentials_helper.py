@@ -17,10 +17,13 @@ def protocol(value):
     _protocol = value
 
 def get_email():
-    return os.environ.get("email"+_protocol)
+    return os.environ.get("EMAIL"+_protocol)
 
 def get_password():
-    return os.environ.get("password"+_protocol)
+    return os.environ.get("PASSWORD"+_protocol)
 
 def get_username():
-    return os.environ.get("username"+_protocol)
+    return os.environ.get("USERNAME"+_protocol)
+
+def get_host():
+    return os.environ.get("HOST"+_protocol)

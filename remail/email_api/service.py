@@ -60,6 +60,7 @@ class ImapProtocol(ProtocolTemplate):
     host = "imap.gmail.com"
     def __init__(self):
         self.IMAP = IMAPClient(self.host,use_uid=True)
+        
 
     SMTP_HOST = host
 
