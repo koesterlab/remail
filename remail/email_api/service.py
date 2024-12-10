@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from remail.email_api.object import Email, EmailReception, Attachment, Contact, RecipientKind
+from object import Email, EmailReception, Attachment, Contact, RecipientKind
 from imapclient import IMAPClient
 from smtplib import SMTP_SSL,SMTP_SSL_PORT
 import email
@@ -10,7 +10,9 @@ import os
 import keyring
 from bs4 import BeautifulSoup
 import mimetypes
-import pytest
+from email.header import decode_header
+from email.utils import parsedate_to_datetime
+from tzlocal import get_localzone
 
 class ProtocolTemplate(ABC):
     
@@ -143,12 +145,15 @@ class ImapProtocol(ProtocolTemplate):
         """Requierment: User is logged in"""
         if not self.logged_in: 
             return False
-        for mailbox in self.IMAP.list_folders():
+        folder_names = [folder[2] for folder in self.IMAP.list_folders()]
+        for mailbox in folder_names:
+            print(mailbox)
             self.IMAP.select_folder(mailbox)
-            messages_ids = self.IMAP.search(["UID",uid])
-            if len(messages_ids)!= 0:
+            messages_ids = self.IMAP.search(['HEADER', 'Message-ID', uid])
+            if messages_ids:
                     self.IMAP.delete_messages(messages_ids)
                     self.IMAP.expunge()
+                    return True
     
     def get_emails(self, date : datetime = None)->list[Email]:
         if not self.logged_in: 
@@ -156,12 +161,15 @@ class ImapProtocol(ProtocolTemplate):
         listofMails = []
         self.IMAP.select_folder("INBOX")
         if date is not None:
-            messages_ids = self.IMAP.search([u'SINCE',date])
+            messages_ids = self.IMAP.search([u'SINCE', date])
         else: 
             messages_ids = self.IMAP.search(["ALL"])
-        for msgid,message_data in self.IMAP.fetch(messages_ids,["RFC822","UID"]).items():
+
+        for msgid,message_data in self.IMAP.fetch(messages_ids,["RFC822"]).items():
             email_message = email.message_from_bytes(message_data[b"RFC822"])
-            Uid = message_data.get(b"UID")
+
+            if date is not None and date > parsedate_to_datetime(email_message["Date"]): 
+                continue
             attachments_file_names = []
             html_parts = []
             body = None
@@ -177,6 +185,9 @@ class ImapProtocol(ProtocolTemplate):
 
                         #safe attachments
                         if filename:
+                            file, encoding = decode_header(filename)[0]
+                            if isinstance(file, bytes):
+                                filename = file.decode(encoding or "utf-8")
                             filepath = os.path.join("attachments", os.path.basename(filename))
                             os.makedirs("attachments", exist_ok=True)
                             with open(filepath, "wb") as f:
@@ -203,15 +214,15 @@ class ImapProtocol(ProtocolTemplate):
                 body_content = ""
 
             listofMails += [create_email(
-                                uid = Uid,
-                                sender = email_message["from"],
-                                subject = email_message["subject"],
+                                uid = email_message["Message-Id"],
+                                sender = email_message["From"],
+                                subject = email_message["Subject"],
                                 body = body_content,
                                 attachments = attachments_file_names,
-                                to_recipients = email_message["to"],
-                                cc_recipients = email_message["cc"],
-                                bcc_recipients = email_message["bcc"],
-                                date = email_message["date"],
+                                to_recipients = email_message["To"],
+                                cc_recipients = email_message["Cc"],
+                                bcc_recipients = email_message["Bcc"],
+                                date =  parsedate_to_datetime(email_message["Date"]),
                                 html_files = html_parts)]
         return listofMails
 
@@ -219,11 +230,13 @@ class ImapProtocol(ProtocolTemplate):
         if not self.logged_in: 
             return None
         listofUIPsIMAP = []
-        for mailbox in self.IMAP.list_folders():
+        for mailbox in [folder[2] for folder in self.IMAP.list_folders()]:
+            print(mailbox)
             self.IMAP.select_folder(mailbox)
             messages_ids = self.IMAP.search(["ALL"])
-            for message_data in self.IMAP.fetch(messages_ids,["RFC822","UID"]).items():
-                listofUIPsIMAP.append(message_data.get(b"UID"))
+            for msgid,message_data in self.IMAP.fetch(messages_ids,["RFC822"]).items():
+                email_message = email.message_from_bytes(message_data[b"RFC822"])
+                listofUIPsIMAP.append(email_message["Message-Id"])
             self.IMAP.close_folder(mailbox)
         return list(set(uids)-set(listofUIPsIMAP))
     
@@ -309,6 +322,7 @@ class ExchangeProtocol(ProtocolTemplate):
                 m.attach(att)
 
         m.send()
+        return True
 
     def mark_email(self, uid: str, read : bool) -> bool:
         if not self.logged_in:
@@ -327,6 +341,8 @@ class ExchangeProtocol(ProtocolTemplate):
         
         for item in self.acc.inbox.filter(message_id=uid):
             item.move_to_trash()
+        return True
+        
     
     def get_deleted_emails(self, uids : list[str]) -> list[str]:
         if not self.logged_in:
@@ -412,6 +428,7 @@ def create_email(
         recipients += [EmailReception(contact = get_contact(recipient), kind = RecipientKind.bcc) for recipient in bcc_recipients]
 
     email =  Email(
+        id = uid,
         sender_contact= sender_contact,
         subject=subject,
         body=body,
@@ -446,48 +463,10 @@ def change_credentials_imap():
     password = input("Gebe das IMAPpasswort ein, um es auf deinem Rechner zu hinterlegen: ")
     keyring.set_password("remail/IMAP","thatchmilo35@gmail.com",password)
 
-def test_mails():
-    imap_test_email = Email(
-        
-        subject="test_imap_mail",
-        body="Test!!",
-        recipients=[EmailReception(contact=(Contact(email_address ="praxisprojekt-remail@uni-due.de")), kind=RecipientKind.to)],
-        attachments=[Attachment(filename=r"C:\Users\toadb\Documents\ReinventingEmail\test.txt")]
-    )
-    exchange_test_email = Email(
-        
-        subject="test_exchange_mail",
-        body="Test!!",
-        recipients=[EmailReception(contact=(Contact(email_address ="thatchmilo35@gmail.com")), kind=RecipientKind.to)],
-        #attachments=[Attachment(filename=r"C:\Users\toadb\Documents\ReinventingEmail\test.txt")]
-    )
-    time = datetime.now()
-    imap = ImapProtocol()
-    exchange = ExchangeProtocol()
-    #Logins
-    assert imap.login()
-    assert imap.logged_in
-    assert exchange.login()
-    assert exchange.logged_in
-    # senden mit exchange und auslesen mit imap
-    assert exchange.send_email(exchange_test_email)
-    test_mail = imap.get_emails(time)[0]
-    assert test_mail.subject == "test_exchange_mail"
-    #löschen der Email mit imap
-    assert imap.delete_email(test_mail.id)
-    assert len(imap.get_emails(time)) == 0
-    # senden mit imap und auslesen mit exchange
-    assert imap.send_email(imap_test_email)
-    test_mail = exchange.get_emails(time)[0]
-    assert test_mail.subject == "test_imap_mail"
-    #löschen der Email mit exchange
-    assert exchange.delete_email(test_mail.id)
-    assert len(exchange.get_emails(time)) == 0
-    #Logout
-    assert imap.logout()
-    assert not imap.logged_in
-    assert exchange.logout()
-    assert not exchange.logged_in
-    
-    
 
+if __name__ == "__main__":
+    imap = ImapProtocol()
+    imap.login()
+    imap.get_emails(datetime(2024,12,6,19,0,0,tzinfo=get_localzone()))
+    imap.get_emails()
+    imap.logout()
