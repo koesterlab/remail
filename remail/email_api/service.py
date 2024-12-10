@@ -1,11 +1,11 @@
 from abc import ABC, abstractmethod
-from object import Email, EmailReception, Attachment, Contact, RecipientKind
+from remail.email_api.object import Email, EmailReception, Attachment, Contact, RecipientKind
 from imapclient import IMAPClient
 from smtplib import SMTP_SSL,SMTP_SSL_PORT
 import email
 from email.message import EmailMessage
 from datetime import datetime
-from exchangelib import Credentials, Account, Message, FileAttachment, EWSDateTime, UTC
+from exchangelib import Credentials, Account, Message, FileAttachment, EWSDateTime, UTC, errors
 import os
 import keyring
 from bs4 import BeautifulSoup
@@ -15,6 +15,8 @@ import tempfile
 from email.header import decode_header
 from email.utils import parsedate_to_datetime
 from tzlocal import get_localzone
+import remail.email_api.credentials_helper as ch
+import remail.email_api.email_errors as ee
 
 
 
@@ -263,20 +265,23 @@ class ExchangeProtocol(ProtocolTemplate):
     def logged_in(self) -> bool:
         return self._logged_in
 
-    def login(self) -> bool:
-        if self.logged_in:
-            return True
+    def login(self):
         
-        user = "praxisprojekt-remail@uni-due.de"
-        password = keyring.get_password("remail/exchange","praxisprojekt-remail@uni-due.de")
+        user = ch.get_email()
+        password = ch.get_password()
+        username = ch.get_username()
 
         try:
-            self.cred = Credentials("ude-1729267167",password)
+            self.cred = Credentials(username,password)
             self.acc = Account(user, credentials=self.cred, autodiscover=True)
             self._logged_in = True
-            return True
-        except Exception:
-            return False
+        except ValueError as e:
+            #hopefully this works and does not catch any other ValueErrors
+            raise ee.InvalidEmail() from None
+        except errors.UnauthorizedError as e:
+            raise ee.InvalidLoginData() from None
+        except Exception as e:
+            raise e
     
     def logout(self) -> bool:
         self.acc = None

@@ -1,7 +1,9 @@
-from enum import StrEnum
+from enum import Enum
+import keyring
+from getpass import getpass
 import os
 
-class Protocol(StrEnum):
+class Protocol(str,Enum):
     IMAP = "IMAP",
     EXCHANGE = "EXCHANGE"
 
@@ -17,13 +19,32 @@ def protocol(value):
     _protocol = value
 
 def get_email():
-    return os.environ.get("EMAIL"+_protocol)
+    email = os.environ.get("EMAIL"+_protocol)
+    if email:
+        return email
+    if _protocol == Protocol.IMAP:
+        return "thatchmilo35@gmail.com"
+    else:
+        return "praxisprojekt-remail@uni-due.de"
 
 def get_password():
-    return os.environ.get("PASSWORD"+_protocol)
+    password = os.environ.get("PASSWORD"+_protocol)
+    if password:
+        return password
+    password = keyring.get_password("remail/"+_protocol,"praxisprojekt-remail@uni-due.de")
+    if password:
+        return password
+    password = getpass("Gebe das "+ _protocol+"-Passwort ein, um es auf deinem Rechner zu hinterlegen: ")
+    keyring.set_password("remail/"+_protocol,"praxisprojekt-remail@uni-due.de",password)
 
 def get_username():
-    return os.environ.get("USERNAME"+_protocol)
+    username = os.environ.get("USERNAME")
+    if username:
+        return username
+    return "ude-1729267167"
 
 def get_host():
-    return os.environ.get("HOST"+_protocol)
+    host = os.environ.get("HOST"+_protocol)
+    if host:
+        return host
+    return "imap.gmail.com"
