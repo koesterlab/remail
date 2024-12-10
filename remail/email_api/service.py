@@ -467,9 +467,9 @@ def change_credentials_imap():
     keyring.set_password("remail/IMAP","thatchmilo35@gmail.com",password)
 
 def safe_file(filename:str,content:bytes)->str:
+    max_size = 10*1024*1024 # muss noch von wo anders bestimmt werden
     if len(content) > max_size:
         raise BufferError
-    max_size = 10*1024*1024 # muss noch von wo anders bestimmt werden
     temp_dir = tempfile.gettempdir()
     safe_filename = secure_filename(filename)
     filepath = os.path.join(temp_dir,safe_filename)
