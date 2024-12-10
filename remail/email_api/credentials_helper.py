@@ -7,35 +7,26 @@ class Protocol(str,Enum):
     IMAP = "IMAP",
     EXCHANGE = "EXCHANGE"
 
-_protocol = Protocol.IMAP
-
-@property
-def protocol():
-    return _protocol
-
-@protocol.setter
-def protocol(value):
-    global _protocol
-    _protocol = value
+protocol = Protocol.IMAP
 
 def get_email():
-    email = os.environ.get("EMAIL"+_protocol)
+    email = os.environ.get("EMAIL"+protocol)
     if email:
         return email
-    if _protocol == Protocol.IMAP:
+    if protocol == Protocol.IMAP:
         return "thatchmilo35@gmail.com"
     else:
         return "praxisprojekt-remail@uni-due.de"
 
 def get_password():
-    password = os.environ.get("PASSWORD"+_protocol)
+    password = os.environ.get("PASSWORD"+protocol)
     if password:
         return password
-    password = keyring.get_password("remail/"+_protocol,"praxisprojekt-remail@uni-due.de")
+    password = keyring.get_password("remail/"+protocol,"praxisprojekt-remail@uni-due.de")
     if password:
         return password
-    password = getpass("Gebe das "+ _protocol+"-Passwort ein, um es auf deinem Rechner zu hinterlegen: ")
-    keyring.set_password("remail/"+_protocol,"praxisprojekt-remail@uni-due.de",password)
+    password = getpass("Gebe das "+ protocol+"-Passwort ein, um es auf deinem Rechner zu hinterlegen: ")
+    keyring.set_password("remail/"+protocol,"praxisprojekt-remail@uni-due.de",password)
 
 def get_username():
     username = os.environ.get("REMAIL_USERNAME")

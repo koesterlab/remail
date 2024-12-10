@@ -269,6 +269,9 @@ class ExchangeProtocol(ProtocolTemplate):
 
     def login(self):
         
+        if self.logged_in:
+            return
+
         user = ch.get_email()
         password = ch.get_password()
         username = ch.get_username()
@@ -285,16 +288,15 @@ class ExchangeProtocol(ProtocolTemplate):
         except Exception as e:
             raise e
     
-    def logout(self) -> bool:
+    def logout(self):
         self.acc = None
         self.cred = None
         self._logged_in = False
-        return True
     
-    def send_email(self,email:Email) -> bool:
+    def send_email(self,email:Email):
         """Requierment: User is logged in"""
         if not self.logged_in:
-            return False
+            raise ee.NotLoggedIn()
         
 
         to = []
@@ -330,31 +332,29 @@ class ExchangeProtocol(ProtocolTemplate):
                 m.attach(att)
 
         m.send()
-        return True
 
-    def mark_email(self, uid: str, read : bool) -> bool:
+    def mark_email(self, uid: str, read : bool):
         if not self.logged_in:
-            return False
+            raise ee.NotLoggedIn()
+        
         for item in self.acc.inbox.filter(message_id=uid):
             item.is_read = read
             item.save(update_fields = ["is_read"])
-        return True
 
 
-    def delete_email(self, uid:str) -> bool:
+    def delete_email(self, uid:str):
         """Requierment: User is logged in
         moves the email in the trash folder"""
         if not self.logged_in:
-            return False
+            raise ee.NotLoggedIn()
         
         for item in self.acc.inbox.filter(message_id=uid):
             item.move_to_trash()
-        return True
         
     
     def get_deleted_emails(self, uids : list[str]) -> list[str]:
         if not self.logged_in:
-            return None
+            raise ee.NotLoggedIn()
         
         server_uids = [item.message_id for item in self.acc.inbox.all()]
 
@@ -364,7 +364,7 @@ class ExchangeProtocol(ProtocolTemplate):
     def get_emails(self, date : datetime = None)->list[Email]:
         
         if not self.logged_in:
-            return None
+            raise ee.NotLoggedIn()
 
         os.makedirs("attachments", exist_ok=True)
         result = []

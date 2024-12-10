@@ -3,3 +3,6 @@ class InvalidEmail(Exception):
 
 class InvalidLoginData(Exception):
     pass
+
+class NotLoggedIn(Exception):
+    pass
