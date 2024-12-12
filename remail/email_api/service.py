@@ -30,7 +30,7 @@ def error_handler(func):
             if "is not an email address" in str(e):
                 raise ee.InvalidEmail() from None
             else:
-                raise ee.UnknownError(f"An unexpected error occurred: {str(e)}") from None
+                raise ee.UnknownError(f"An unexpected error occurred: {str(e)}")
         except (exch_errors.UnauthorizedError, LoginError):
             raise ee.InvalidLoginData() from None
         except SMTPHeloError:
@@ -39,7 +39,7 @@ def error_handler(func):
             raise ee.SMTPAuthenticationFalse() from None
         except SMTPNotSupportedError:
             raise ee.SMTPNotSupported() from None
-        except (SMTPConnectError, exch_errors.ErrorConnectionFailed):
+        except (SMTPConnectError, exch_errors.ErrorConnectionFailed, exch_errors.TransportError):
             raise ee.SMTPServerConnectionFalse() from None
         except SMTPDataError:
             raise ee.SMTPDataFalse() from None

@@ -1,7 +1,9 @@
 class EmailError(Exception):
+    """base class for remail exceptions"""
     pass
 
 class InvalidEmail(EmailError):
+    """email address in Credentials is invalid. Only raised in exchange"""
     pass
 
 class InvalidLoginData(EmailError):
