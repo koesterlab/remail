@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from remail.email_api.object import Email, EmailReception, Attachment, Contact, RecipientKind
 from imapclient import IMAPClient
-from smtplib import SMTP_SSL,SMTP_SSL_PORT, SMTPAuthenticationError,SMTPRecipientsRefused,SMTPServerDisconnected
+from smtplib import SMTP_SSL,SMTP_SSL_PORT, SMTPAuthenticationError,SMTPRecipientsRefused,SMTPServerDisconnected,SMTPSenderRefused,SMTPDataError,SMTPConnectError,SMTPHeloError,SMTPNotSupportedError
 import email
 from imapclient.exceptions import LoginError
 from email.message import EmailMessage
@@ -32,6 +32,22 @@ def error_handler(func):
             raise ee.InvalidEmail() from None
         except (exch_errors.UnauthorizedError, LoginError):
             raise ee.InvalidLoginData() from None
+        except SMTPHeloError:
+            raise ee.InvalidLoginData() from None
+        except SMTPAuthenticationError:
+            raise ee.SMTPAuthenticationFalse() from None
+        except SMTPNotSupportedError:
+            raise ee.SMTPNotSupported() from None
+        except SMTPConnectError:
+            raise ee.SMTPServerConnectionFalse() from None
+        except SMTPDataError:
+            raise ee.SMTPDataFalse() from None
+        except SMTPSenderRefused:
+            raise ee.SMTPSenderFalse() from None
+        except SMTPServerDisconnected:
+            raise ee.SMTPServerConnectionFalse() from None
+        except SMTPRecipientsRefused:
+            raise ee.SMTPRecipientsFalse() from None
         except Exception as e:
             raise e #ee.UnknownError(f"An unexpected error occurred: {str(e)}") from None
     return wrapper
@@ -113,6 +129,7 @@ class ImapProtocol(ProtocolTemplate):
         except Exception:
             return False
         
+    @error_handler
     def send_email(self, email:Email):
         """Requierement: User is logged in"""
 
@@ -159,19 +176,10 @@ class ImapProtocol(ProtocolTemplate):
             msg.add_attachment(file_data, maintype = main_type, subtype = sub_type, filename = filename)
 
         #connect/authenticate
-        try:
-            smtp_server = SMTP_SSL(self.SMTP_HOST, port = SMTP_SSL_PORT)
-            #Wieso geht das?: smtp_server = SMTP_SSL(self.SMTP_HOST, port = "")
-            smtp_server.login(SMTP_USER, SMTP_PASS)
-            smtp_server.send_message(msg)
-        except SMTPServerDisconnected:
-            raise ee.SMTPServerDisconnect() from None
-        except SMTPAuthenticationError:
-            raise ee.SMTPAuthenticationFalse() from None
-        except SMTPRecipientsRefused:
-            raise ee.SMTPRecipientsFalse() from None
-        except Exception as e:
-            raise e
+        smtp_server = SMTP_SSL(self.SMTP_HOST, port = SMTP_SSL_PORT)
+        #Wieso geht das?: smtp_server = SMTP_SSL(self.SMTP_HOST, port = "")
+        smtp_server.login(SMTP_USER, SMTP_PASS)
+        smtp_server.send_message(msg)
         
         #disconnect
         smtp_server.quit()
