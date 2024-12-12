@@ -163,7 +163,6 @@ class ImapProtocol(ProtocolTemplate):
         msg.set_content(email.body)
 
         #attachment
-        #hier auch try drum?
         for att in email.attachments:
             filename = os.path.basename(att.filename)  # Sanitize filename
             if not os.path.exists(att.filename) or not os.path.isfile(att.filename):
@@ -177,7 +176,6 @@ class ImapProtocol(ProtocolTemplate):
 
         #connect/authenticate
         smtp_server = SMTP_SSL(self.SMTP_HOST, port = SMTP_SSL_PORT)
-        #Wieso geht das?: smtp_server = SMTP_SSL(self.SMTP_HOST, port = "")
         smtp_server.login(SMTP_USER, SMTP_PASS)
         smtp_server.send_message(msg)
         
