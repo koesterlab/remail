@@ -252,7 +252,7 @@ class ImapProtocol(ProtocolTemplate):
 
                 #get plain if no multipart
                 else:
-                    body = email_message.get_payload(decode=True).decode(part.get_content_charset() or "utf-8",errors="replace")
+                    body = email_message.get_payload(decode=True).decode(email_message.get_content_charset() or "utf-8",errors="replace")
 
                 listofMails += [create_email(
                                     uid = email_message["Message-Id"],
@@ -277,7 +277,6 @@ class ImapProtocol(ProtocolTemplate):
             raise ee.NotLoggedIn()
         listofUIPsIMAP = []
         for mailbox in [folder[2] for folder in self.IMAP.list_folders()]:
-            print(mailbox)
             self.IMAP.select_folder(mailbox)
             messages_ids = self.IMAP.search(["ALL"])
             for _,message_data in self.IMAP.fetch(messages_ids,["RFC822"]).items():
@@ -518,6 +517,7 @@ def safe_file(filename:str,content:bytes)->str:
     try:
         with open(filepath,"wb") as f:
             f.write(content)
+        return filepath
     except Exception as e:
         raise e
 
