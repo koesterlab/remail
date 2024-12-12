@@ -49,6 +49,7 @@ def email_test_context():
 
 
 def test_mails():
+    """testing get_mails with date, delete with msgID"""
     with email_test_context() as (imap,exchange):
         try:
             date = datetime.now(get_localzone())

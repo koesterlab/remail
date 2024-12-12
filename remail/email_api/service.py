@@ -33,7 +33,7 @@ def error_handler(func):
         except (exch_errors.UnauthorizedError, LoginError):
             raise ee.InvalidLoginData() from None
         except Exception as e:
-            raise ee.UnknownError(f"An unexpected error occurred: {str(e)}") from None
+            raise e #ee.UnknownError(f"An unexpected error occurred: {str(e)}") from None
     return wrapper
 
 
@@ -175,7 +175,8 @@ class ImapProtocol(ProtocolTemplate):
         
         #disconnect
         smtp_server.quit()
-
+        
+    @error_handler
     def delete_email(self, uid:str):
         """Requierment: User is logged in"""
         if not self.logged_in: 
@@ -188,7 +189,8 @@ class ImapProtocol(ProtocolTemplate):
                     self.IMAP.delete_messages(messages_ids)
                     self.IMAP.expunge()
                     return True
-    
+            
+    @error_handler
     def get_emails(self, date : datetime = None)->list[Email]:
         if not self.logged_in: 
             raise ee.NotLoggedIn()
@@ -198,6 +200,7 @@ class ImapProtocol(ProtocolTemplate):
             listofMails.append(self._get_emails(mailbox,date))
         return listofMails
     
+    @error_handler
     def _get_emails(self, folder : str, date : datetime = None)-> list[Email]:
         listofMails = []
         try:
@@ -255,11 +258,13 @@ class ImapProtocol(ProtocolTemplate):
                                     bcc_recipients = email_message["Bcc"],
                                     date =  parsedate_to_datetime(email_message["Date"]),
                                     html_files = html_parts)]
+        except Exception as e:
+            raise e
         finally:
             self.IMAP.close_folder(folder)
         return listofMails
 
-
+    @error_handler
     def get_deleted_emails(self,uids:list[str])->list[str]:
         if not self.logged_in: 
             raise ee.NotLoggedIn()
@@ -268,12 +273,13 @@ class ImapProtocol(ProtocolTemplate):
             print(mailbox)
             self.IMAP.select_folder(mailbox)
             messages_ids = self.IMAP.search(["ALL"])
-            for msgid,message_data in self.IMAP.fetch(messages_ids,["RFC822"]).items():
+            for _,message_data in self.IMAP.fetch(messages_ids,["RFC822"]).items():
                 email_message = email.message_from_bytes(message_data[b"RFC822"])
                 listofUIPsIMAP.append(email_message["Message-Id"])
             self.IMAP.close_folder(mailbox)
         return list(set(uids)-set(listofUIPsIMAP))
     
+    @error_handler
     def mark_email(self,uid:str,read:bool):
         if not self.logged_in: 
            raise ee.NotLoggedIn()
