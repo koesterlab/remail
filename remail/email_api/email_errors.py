@@ -15,13 +15,10 @@ class NotLoggedIn(EmailError):
 class UnknownError(EmailError):
     pass
 
-class SMTPAuthenticationFalse(EmailError):
+class RecipientsFail(EmailError):
     pass
 
-class SMTPRecipientsFalse(EmailError):
-    pass
-
-class SMTPServerConnectionFalse(EmailError):
+class ServerConnectionFail(EmailError):
     pass
 
 class SMTPSenderFalse(EmailError):
@@ -30,5 +27,5 @@ class SMTPSenderFalse(EmailError):
 class SMTPDataFalse(EmailError):
     pass
 
-class SMTPNotSupported(EmailError):
+class CommandNotSupported(EmailError):
     pass

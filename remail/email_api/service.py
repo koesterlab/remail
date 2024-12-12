@@ -31,24 +31,18 @@ def error_handler(func):
                 raise ee.InvalidEmail() from None
             else:
                 raise ee.UnknownError(f"An unexpected error occurred: {str(e)}")
-        except (exch_errors.UnauthorizedError, LoginError):
+        except (exch_errors.UnauthorizedError, LoginError,SMTPHeloError,SMTPAuthenticationError):
             raise ee.InvalidLoginData() from None
-        except SMTPHeloError:
-            raise ee.InvalidLoginData() from None
-        except SMTPAuthenticationError:
-            raise ee.SMTPAuthenticationFalse() from None
         except SMTPNotSupportedError:
-            raise ee.SMTPNotSupported() from None
-        except (SMTPConnectError, exch_errors.ErrorConnectionFailed, exch_errors.TransportError):
-            raise ee.SMTPServerConnectionFalse() from None
+            raise ee.CommandNotSupported() from None
+        except (SMTPConnectError, exch_errors.ErrorConnectionFailed, exch_errors.TransportError, SMTPServerDisconnected):
+            raise ee.ServerConnectionFail() from None
         except SMTPDataError:
             raise ee.SMTPDataFalse() from None
         except SMTPSenderRefused:
             raise ee.SMTPSenderFalse() from None
-        except SMTPServerDisconnected:
-            raise ee.SMTPServerConnectionFalse() from None
         except (SMTPRecipientsRefused, exch_errors.ErrorInvalidRecipients):
-            raise ee.SMTPRecipientsFalse() from None
+            raise ee.RecipientsFail() from None
         except Exception as e:
             raise ee.UnknownError(f"An unexpected error occurred: {str(e)}")
     return wrapper
