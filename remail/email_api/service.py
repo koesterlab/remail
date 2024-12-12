@@ -167,68 +167,72 @@ class ImapProtocol(ProtocolTemplate):
         if not self.logged_in: 
             raise ee.NotLoggedIn()
         listofMails = []
-        self.IMAP.select_folder("INBOX")
-        if date is not None:
-            messages_ids = self.IMAP.search([u'SINCE', date])
-        else: 
-            messages_ids = self.IMAP.search(["ALL"])
-
-        for msgid,message_data in self.IMAP.fetch(messages_ids,["RFC822"]).items():
-            email_message = email.message_from_bytes(message_data[b"RFC822"])
-
-            if date is not None and date > parsedate_to_datetime(email_message["Date"]): 
-                continue
-            attachments_file_names = []
-            html_parts = []
-            body = None
-            if email_message.is_multipart():                
-                #iter over all parts
-                for part in email_message.walk():
-                    ctype = part.get_content_type()
-                    cdispo = str(part.get('Content-Disposition'))
-
-                    #get attachments part
-                    if part.get_content_disposition() == "attachment":
-                        filename = part.get_filename()
-
-                        #safe attachments
-                        if filename:
-                            file, encoding = decode_header(filename)[0]
-                            if isinstance(file, bytes):
-                                filename = file.decode(encoding or "utf-8")
-                                attachments_file_names += [safe_file(filename,part.get_payload(decode=True))]
-                    #get HTML parts
-                    if part.get_content_disposition() == "text/html":
-                        html_content = part.get_payload(decode=True).decode(part.get_content_charset() or "utf-8")
-                        html_parts.append(html_content)
-
-                    #get plain text from email
-                    if ctype == 'text/plain' and 'attachment' not in cdispo:
-                        body = part.get_payload(decode=True)
-
-            #get 
-            else:
-                body = email_message.get_payload(decode=True)
-
-            #hier fehlt noch das date 
-
-            if body:
-                body_content = body.decode("UTF-8")
-            else:
-                body_content = ""
-
-            listofMails += [create_email(
-                                uid = email_message["Message-Id"],
-                                sender = email_message["From"],
-                                subject = email_message["Subject"],
-                                body = body_content,
-                                attachments = attachments_file_names,
-                                to_recipients = email_message["To"],
-                                cc_recipients = email_message["Cc"],
-                                bcc_recipients = email_message["Bcc"],
-                                date =  parsedate_to_datetime(email_message["Date"]),
-                                html_files = html_parts)]
+        folder_names = [folder[2] for folder in self.IMAP.list_folders()]
+        for mailbox in folder_names:
+            listofMails.append(self._get_emails(mailbox,date))
         return listofMails
+    
+    def _get_emails(self, folder : str, date : datetime = None)-> list[Email]:
+        listofMails = []
+        try:
+            self.IMAP.select_folder(folder)
+            if date is not None:
+                messages_ids = self.IMAP.search([u'SINCE', date])
+            else: 
+                messages_ids = self.IMAP.search(["ALL"])
+
+            for _,message_data in self.IMAP.fetch(messages_ids,["RFC822"]).items():
+                email_message = email.message_from_bytes(message_data[b"RFC822"])
+
+                if date is not None and date > parsedate_to_datetime(email_message["Date"]): 
+                    continue
+                attachments_file_names = []
+                html_parts = []
+                body = None
+                if email_message.is_multipart():                
+                    #iter over all parts
+                    for part in email_message.walk():
+                        ctype = part.get_content_type()
+                        cdispo = str(part.get('Content-Disposition'))
+
+                        #get attachments part
+                        if part.get_content_disposition() == "attachment":
+                            filename = part.get_filename()
+                            #safe attachments
+                            if filename:
+                                file, encoding = decode_header(filename)[0]
+                                if isinstance(file, bytes):
+                                    filename = file.decode(encoding or "utf-8",errors="replace")
+                                    attachments_file_names += [safe_file(filename,part.get_payload(decode=True))]
+                                    
+                        #get HTML parts
+                        if part.get_content_disposition() == "text/html":
+                            html_content = part.get_payload(decode=True).decode(part.get_content_charset() or "utf-8",errors="replace")
+                            html_parts.append(html_content)
+
+                        #get plain text from email
+                        if ctype == 'text/plain' and 'attachment' not in cdispo:
+                            body = part.get_payload(decode=True).decode(part.get_content_charset() or "utf-8",errors="replace")
+
+                #get plain if no multipart
+                else:
+                    body = email_message.get_payload(decode=True).decode(part.get_content_charset() or "utf-8",errors="replace")
+
+                listofMails += [create_email(
+                                    uid = email_message["Message-Id"],
+                                    sender = email_message["From"],
+                                    subject = email_message["Subject"],
+                                    body = body,
+                                    attachments = attachments_file_names,
+                                    to_recipients = email_message["To"],
+                                    cc_recipients = email_message["Cc"],
+                                    bcc_recipients = email_message["Bcc"],
+                                    date =  parsedate_to_datetime(email_message["Date"]),
+                                    html_files = html_parts)]
+        finally:
+            self.IMAP.close_folder(folder)
+        return listofMails
+
 
     def get_deleted_emails(self,uids:list[str])->list[str]:
         if not self.logged_in: 
