@@ -1,12 +1,12 @@
 from abc import ABC, abstractmethod
 from remail.email_api.object import Email, EmailReception, Attachment, Contact, RecipientKind
 from imapclient import IMAPClient
-from smtplib import SMTP_SSL,SMTP_SSL_PORT
+from smtplib import SMTP_SSL,SMTP_SSL_PORT, SMTPAuthenticationError,SMTPRecipientsRefused,SMTPServerDisconnected
 import email
 from imapclient.exceptions import LoginError
 from email.message import EmailMessage
 from datetime import datetime
-from exchangelib import Credentials, Account, Message, FileAttachment, EWSDateTime, UTC, errors
+from exchangelib import Credentials, Account, Message, FileAttachment, EWSDateTime, UTC, errors as exch_errors
 import os
 import keyring
 from bs4 import BeautifulSoup
@@ -19,6 +19,22 @@ from tzlocal import get_localzone
 import remail.email_api.credentials_helper as ch
 import remail.email_api.email_errors as ee
 
+def error_handler(func):
+    
+    def wrapper(self, *args, **kwargs):
+        try:
+            return func(self, *args, **kwargs)
+        except ee.NotLoggedIn as e:
+            raise e
+        except exch_errors.ErrorInvalidRecipients:
+            raise ee.SMTPRecipientsFalse() from None
+        except ValueError:
+            raise ee.InvalidEmail() from None
+        except (exch_errors.UnauthorizedError, LoginError):
+            raise ee.InvalidLoginData() from None
+        except Exception as e:
+            raise ee.UnknownError(f"An unexpected error occurred: {str(e)}") from None
+    return wrapper
 
 
 class ProtocolTemplate(ABC):
@@ -105,7 +121,7 @@ class ImapProtocol(ProtocolTemplate):
 
         SMTP_USER = self.user_username
         SMTP_PASS = self.user_password
-
+        
         to = []
         cc = []
         bcc = []
@@ -130,7 +146,7 @@ class ImapProtocol(ProtocolTemplate):
         msg.set_content(email.body)
 
         #attachment
-
+        #hier auch try drum?
         for att in email.attachments:
             filename = os.path.basename(att.filename)  # Sanitize filename
             if not os.path.exists(att.filename) or not os.path.isfile(att.filename):
@@ -143,9 +159,19 @@ class ImapProtocol(ProtocolTemplate):
             msg.add_attachment(file_data, maintype = main_type, subtype = sub_type, filename = filename)
 
         #connect/authenticate
-        smtp_server = SMTP_SSL(self.SMTP_HOST, port = SMTP_SSL_PORT)
-        smtp_server.login(SMTP_USER, SMTP_PASS)
-        smtp_server.send_message(msg)
+        try:
+            smtp_server = SMTP_SSL(self.SMTP_HOST, port = SMTP_SSL_PORT)
+            #Wieso geht das?: smtp_server = SMTP_SSL(self.SMTP_HOST, port = "")
+            smtp_server.login(SMTP_USER, SMTP_PASS)
+            smtp_server.send_message(msg)
+        except SMTPServerDisconnected:
+            raise ee.SMTPServerDisconnect() from None
+        except SMTPAuthenticationError:
+            raise ee.SMTPAuthenticationFalse() from None
+        except SMTPRecipientsRefused:
+            raise ee.SMTPRecipientsFalse() from None
+        except Exception as e:
+            raise e
         
         #disconnect
         smtp_server.quit()
@@ -270,6 +296,7 @@ class ExchangeProtocol(ProtocolTemplate):
     def logged_in(self) -> bool:
         return self._logged_in
 
+    @error_handler
     def login(self):
         
         if self.logged_in:
@@ -279,17 +306,11 @@ class ExchangeProtocol(ProtocolTemplate):
         password = ch.get_password()
         username = ch.get_username()
 
-        try:
-            self.cred = Credentials(username,password)
-            self.acc = Account(user, credentials=self.cred, autodiscover=True)
-            self._logged_in = True
-        except ValueError:
-            #hopefully this works and does not catch any other ValueErrors
-            raise ee.InvalidEmail() from None
-        except errors.UnauthorizedError:
-            raise ee.InvalidLoginData() from None
-        except Exception as e:
-            raise e
+        
+        self.cred = Credentials(username,password)
+        self.acc = Account(user, credentials=self.cred, autodiscover=True)
+        self._logged_in = True
+        
     
     def logout(self):
         self.acc = None
