@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from remail.email_api.object import Email, EmailReception, Attachment, Contact, RecipientKind
 from imapclient import IMAPClient
-from smtplib import SMTP_SSL,SMTP_SSL_PORT
+from smtplib import SMTP_SSL,SMTP_SSL_PORT, SMTPAuthenticationError,SMTPRecipientsRefused,SMTPServerDisconnected
 import email
 from imapclient.exceptions import LoginError
 from email.message import EmailMessage
@@ -105,7 +105,7 @@ class ImapProtocol(ProtocolTemplate):
 
         SMTP_USER = self.user_username
         SMTP_PASS = self.user_password
-
+        
         to = []
         cc = []
         bcc = []
@@ -130,7 +130,7 @@ class ImapProtocol(ProtocolTemplate):
         msg.set_content(email.body)
 
         #attachment
-
+        #hier auch try drum?
         for att in email.attachments:
             filename = os.path.basename(att.filename)  # Sanitize filename
             if not os.path.exists(att.filename) or not os.path.isfile(att.filename):
@@ -143,9 +143,19 @@ class ImapProtocol(ProtocolTemplate):
             msg.add_attachment(file_data, maintype = main_type, subtype = sub_type, filename = filename)
 
         #connect/authenticate
-        smtp_server = SMTP_SSL(self.SMTP_HOST, port = SMTP_SSL_PORT)
-        smtp_server.login(SMTP_USER, SMTP_PASS)
-        smtp_server.send_message(msg)
+        try:
+            smtp_server = SMTP_SSL(self.SMTP_HOST, port = SMTP_SSL_PORT)
+            #Wieso geht das?: smtp_server = SMTP_SSL(self.SMTP_HOST, port = "")
+            smtp_server.login(SMTP_USER, SMTP_PASS)
+            smtp_server.send_message(msg)
+        except SMTPServerDisconnected:
+            raise ee.SMTPServerDisconnect() from None
+        except SMTPAuthenticationError:
+            raise ee.SMTPAuthenticationFalse() from None
+        except SMTPRecipientsRefused:
+            raise ee.SMTPRecipientsFalse() from None
+        except Exception as e:
+            raise e
         
         #disconnect
         smtp_server.quit()

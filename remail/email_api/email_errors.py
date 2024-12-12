@@ -6,3 +6,12 @@ class InvalidLoginData(Exception):
 
 class NotLoggedIn(Exception):
     pass
+
+class SMTPAuthenticationFalse(Exception):
+    pass
+
+class SMTPRecipientsFalse(Exception):
+    pass
+
+class SMTPServerDisconnect(Exception):
+    pass
