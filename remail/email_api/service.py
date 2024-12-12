@@ -24,12 +24,13 @@ def error_handler(func):
     def wrapper(self, *args, **kwargs):
         try:
             return func(self, *args, **kwargs)
-        except ee.NotLoggedIn as e:
+        except ee.EmailError as e:
             raise e
-        except exch_errors.ErrorInvalidRecipients:
-            raise ee.SMTPRecipientsFalse() from None
-        except ValueError:
-            raise ee.InvalidEmail() from None
+        except ValueError as e:
+            if "is not an email address" in str(e):
+                raise ee.InvalidEmail() from None
+            else:
+                raise ee.UnknownError(f"An unexpected error occurred: {str(e)}") from None
         except (exch_errors.UnauthorizedError, LoginError):
             raise ee.InvalidLoginData() from None
         except SMTPHeloError:
@@ -38,7 +39,7 @@ def error_handler(func):
             raise ee.SMTPAuthenticationFalse() from None
         except SMTPNotSupportedError:
             raise ee.SMTPNotSupported() from None
-        except SMTPConnectError:
+        except (SMTPConnectError, exch_errors.ErrorConnectionFailed):
             raise ee.SMTPServerConnectionFalse() from None
         except SMTPDataError:
             raise ee.SMTPDataFalse() from None
@@ -46,10 +47,10 @@ def error_handler(func):
             raise ee.SMTPSenderFalse() from None
         except SMTPServerDisconnected:
             raise ee.SMTPServerConnectionFalse() from None
-        except SMTPRecipientsRefused:
+        except (SMTPRecipientsRefused, exch_errors.ErrorInvalidRecipients):
             raise ee.SMTPRecipientsFalse() from None
         except Exception as e:
-            raise ee.UnknownError(f"An unexpected error occurred: {str(e)}") from None
+            raise ee.UnknownError(f"An unexpected error occurred: {str(e)}")
     return wrapper
 
 
@@ -325,6 +326,7 @@ class ExchangeProtocol(ProtocolTemplate):
         self.cred = None
         self._logged_in = False
     
+    @error_handler
     def send_email(self,email:Email):
         """Requierment: User is logged in"""
         if not self.logged_in:
@@ -365,6 +367,7 @@ class ExchangeProtocol(ProtocolTemplate):
 
         m.send()
 
+    @error_handler
     def mark_email(self, uid: str, read : bool):
         if not self.logged_in:
             raise ee.NotLoggedIn()
@@ -373,7 +376,7 @@ class ExchangeProtocol(ProtocolTemplate):
             item.is_read = read
             item.save(update_fields = ["is_read"])
 
-
+    @error_handler
     def delete_email(self, uid:str):
         """Requierment: User is logged in
         moves the email in the trash folder"""
@@ -383,7 +386,7 @@ class ExchangeProtocol(ProtocolTemplate):
         for item in self.acc.inbox.filter(message_id=uid):
             item.move_to_trash()
         
-    
+    @error_handler
     def get_deleted_emails(self, uids : list[str]) -> list[str]:
         if not self.logged_in:
             raise ee.NotLoggedIn()
@@ -392,7 +395,7 @@ class ExchangeProtocol(ProtocolTemplate):
 
         return list(set(uids) - set(server_uids))
 
-
+    @error_handler
     def get_emails(self, date : datetime = None)->list[Email]:
         
         if not self.logged_in:
@@ -410,6 +413,7 @@ class ExchangeProtocol(ProtocolTemplate):
         return result
 
     #Attachments sind leer
+    @error_handler
     def _get_email_exchange(self, item):
         attachments = []
         for attachment in item.attachments:

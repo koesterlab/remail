@@ -1,29 +1,32 @@
-class InvalidEmail(Exception):
+class EmailError(Exception):
     pass
 
-class InvalidLoginData(Exception):
+class InvalidEmail(EmailError):
     pass
 
-class NotLoggedIn(Exception):
+class InvalidLoginData(EmailError):
     pass
 
-class UnknownError(Exception):
+class NotLoggedIn(EmailError):
     pass
 
-class SMTPAuthenticationFalse(Exception):
+class UnknownError(EmailError):
     pass
 
-class SMTPRecipientsFalse(Exception):
+class SMTPAuthenticationFalse(EmailError):
     pass
 
-class SMTPServerConnectionFalse(Exception):
+class SMTPRecipientsFalse(EmailError):
     pass
 
-class SMTPSenderFalse(Exception):
+class SMTPServerConnectionFalse(EmailError):
     pass
 
-class SMTPDataFalse(Exception):
+class SMTPSenderFalse(EmailError):
     pass
 
-class SMTPNotSupported(Exception):
+class SMTPDataFalse(EmailError):
+    pass
+
+class SMTPNotSupported(EmailError):
     pass
