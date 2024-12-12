@@ -7,6 +7,9 @@ class InvalidLoginData(Exception):
 class NotLoggedIn(Exception):
     pass
 
+class UnknownError(Exception):
+    pass
+
 class SMTPAuthenticationFalse(Exception):
     pass
 

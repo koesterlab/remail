@@ -6,7 +6,7 @@ import email
 from imapclient.exceptions import LoginError
 from email.message import EmailMessage
 from datetime import datetime
-from exchangelib import Credentials, Account, Message, FileAttachment, EWSDateTime, UTC, errors
+from exchangelib import Credentials, Account, Message, FileAttachment, EWSDateTime, UTC, errors as exch_errors
 import os
 import keyring
 from bs4 import BeautifulSoup
@@ -19,6 +19,22 @@ from tzlocal import get_localzone
 import remail.email_api.credentials_helper as ch
 import remail.email_api.email_errors as ee
 
+def error_handler(func):
+    
+    def wrapper(self, *args, **kwargs):
+        try:
+            return func(self, *args, **kwargs)
+        except ee.NotLoggedIn as e:
+            raise e
+        except exch_errors.ErrorInvalidRecipients:
+            raise ee.SMTPRecipientsFalse() from None
+        except ValueError:
+            raise ee.InvalidEmail() from None
+        except (exch_errors.UnauthorizedError, LoginError):
+            raise ee.InvalidLoginData() from None
+        except Exception as e:
+            raise ee.UnknownError(f"An unexpected error occurred: {str(e)}") from None
+    return wrapper
 
 
 class ProtocolTemplate(ABC):
@@ -276,6 +292,7 @@ class ExchangeProtocol(ProtocolTemplate):
     def logged_in(self) -> bool:
         return self._logged_in
 
+    @error_handler
     def login(self):
         
         if self.logged_in:
@@ -285,17 +302,11 @@ class ExchangeProtocol(ProtocolTemplate):
         password = ch.get_password()
         username = ch.get_username()
 
-        try:
-            self.cred = Credentials(username,password)
-            self.acc = Account(user, credentials=self.cred, autodiscover=True)
-            self._logged_in = True
-        except ValueError:
-            #hopefully this works and does not catch any other ValueErrors
-            raise ee.InvalidEmail() from None
-        except errors.UnauthorizedError:
-            raise ee.InvalidLoginData() from None
-        except Exception as e:
-            raise e
+        
+        self.cred = Credentials(username,password)
+        self.acc = Account(user, credentials=self.cred, autodiscover=True)
+        self._logged_in = True
+        
     
     def logout(self):
         self.acc = None
