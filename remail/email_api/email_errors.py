@@ -16,5 +16,14 @@ class SMTPAuthenticationFalse(Exception):
 class SMTPRecipientsFalse(Exception):
     pass
 
-class SMTPServerDisconnect(Exception):
+class SMTPServerConnectionFalse(Exception):
+    pass
+
+class SMTPSenderFalse(Exception):
+    pass
+
+class SMTPDataFalse(Exception):
+    pass
+
+class SMTPNotSupported(Exception):
     pass
