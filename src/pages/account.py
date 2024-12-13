@@ -6,9 +6,9 @@ st.title("Account Management")
 st.subheader("Profile Information")
 # example for editing account information
 with st.form("profile_form"):
-    st.text_input("First Name", value="John")
-    st.text_input("Last Name", value="Doe")
-    st.text_input("Email", value="john.doe@example.com", disabled=True)  # E-Mail nicht bearbeitbar
+    st.text_input("First Name", value="Max")
+    st.text_input("Last Name", value="Mustermann")
+    st.text_input("Email", value="max.mustermann@example.com", disabled=True)  # E-Mail is not editable
     st.date_input("Date of Birth", value=None)
     
     # Submit-Button for the formula
