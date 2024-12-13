@@ -101,7 +101,7 @@ class ImapProtocol(ProtocolTemplate):
     user_username = None
     #or imappassword
     user_password = None
-    host = "imap.gmail.com"
+    host = ch.get_host()
     def __init__(self):
         self.IMAP = IMAPClient(self.host,use_uid=True)
         
