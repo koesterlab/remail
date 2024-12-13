@@ -186,18 +186,17 @@ class ImapProtocol(ProtocolTemplate):
         smtp_server.quit()
         
     @error_handler
-    def delete_email(self, uid:str):
+    def delete_email(self, message_id:str):
         """Requierment: User is logged in"""
         if not self.logged_in: 
             raise ee.NotLoggedIn()
         folder_names = [folder[2] for folder in self.IMAP.list_folders()]
         for mailbox in folder_names:
             self.IMAP.select_folder(mailbox)
-            messages_ids = self.IMAP.search(['HEADER', 'Message-ID', uid])
+            messages_ids = self.IMAP.search(['HEADER', 'Message-ID', message_id])
             if messages_ids:
                     self.IMAP.delete_messages(messages_ids)
                     self.IMAP.expunge()
-                    return True
             
     @error_handler
     def get_emails(self, date : datetime = None)->list[Email]:
@@ -274,27 +273,27 @@ class ImapProtocol(ProtocolTemplate):
         return listofMails
 
     @error_handler
-    def get_deleted_emails(self,uids:list[str])->list[str]:
+    def get_deleted_emails(self,message_ids:list[str])->list[str]:
         if not self.logged_in: 
             raise ee.NotLoggedIn()
         listofUIPsIMAP = []
         for mailbox in [folder[2] for folder in self.IMAP.list_folders()]:
             self.IMAP.select_folder(mailbox)
-            messages_ids = self.IMAP.search(["ALL"])
-            for _,message_data in self.IMAP.fetch(messages_ids,["RFC822"]).items():
+            list_messages_ids = self.IMAP.search(["ALL"])
+            for _,message_data in self.IMAP.fetch(list_messages_ids,["RFC822"]).items():
                 email_message = email.message_from_bytes(message_data[b"RFC822"])
                 listofUIPsIMAP.append(email_message["Message-Id"])
             self.IMAP.close_folder(mailbox)
-        return list(set(uids)-set(listofUIPsIMAP))
+        return list(set(message_ids)-set(listofUIPsIMAP))
     
     @error_handler
-    def mark_email(self,uid:str,read:bool):
+    def mark_email(self,message_id:str,read:bool):
         if not self.logged_in: 
            raise ee.NotLoggedIn()
         if read:
-            self.IMAP.add_flags(uid,["SEEN"])
+            self.IMAP.add_flags(message_id,["SEEN"])
         else:
-            self.IMAP.remove_flags(uid,["SEEN"])
+            self.IMAP.remove_flags(message_id,["SEEN"])
 
 
 
