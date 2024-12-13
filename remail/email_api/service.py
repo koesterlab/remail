@@ -82,8 +82,10 @@ class ProtocolTemplate(ABC):
         pass
 
     @abstractmethod
-    def delete_email(self, message_id: str):
-        """Deletes the email with given message_id"""
+    def delete_email(self, message_id: str, hard_delete: bool):
+        """Deletes the email with given message_id
+        hard_delete = True -> completely removes email
+        hard_delete = False -> moves to trash folder"""
         pass
 
     @abstractmethod
@@ -176,7 +178,7 @@ class ImapProtocol(ProtocolTemplate):
         smtp_server.quit()
         
     @error_handler
-    def delete_email(self, message_id:str):
+    def delete_email(self, message_id:str, hard_delete: bool):
         if not self.logged_in: 
             raise ee.NotLoggedIn()
         folder_names = [folder[2] for folder in self.IMAP.list_folders()]
@@ -367,7 +369,7 @@ class ExchangeProtocol(ProtocolTemplate):
             item.save(update_fields = ["is_read"])
 
     @error_handler
-    def delete_email(self, message_id:str):
+    def delete_email(self, message_id:str, hard_delete: bool):
         """moves the email in the trash folder"""
         if not self.logged_in:
             raise ee.NotLoggedIn()
