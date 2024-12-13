@@ -37,6 +37,7 @@ def error_handler(func):
         except INVALIDLOGINDATA:
             raise ee.InvalidLoginData() from None
         except CONNECTIONFAIL:
+            raise ee.ServerConnectionFail()
         except SMTPDataError:
             raise ee.SMTPDataFalse() from None
         except RECIPIENTSFAIL:
@@ -102,17 +103,19 @@ class ImapProtocol(ProtocolTemplate):
         self.user_username = email
         self.user_password = password
         self.host = host
+        self._logged_in = False
         self.IMAP = IMAPClient(self.host,use_uid=True)
         
     @property
     def logged_in(self) -> bool:
-        return self.user_password is not None and self.user_username is not None
+        return self._logged_in
     
     def login(self):
         if self.logged_in: 
             return
         try:
             self.IMAP.login(self.user_username, self.user_password)
+            self._logged_in = True
         except LoginError:
             raise ee.InvalidLoginData() from None
         except Exception as e:
@@ -123,6 +126,7 @@ class ImapProtocol(ProtocolTemplate):
         self.IMAP.logout()
         self.user_password = None
         self.user_username = None
+        self.logged_in = False
 
         
     @error_handler
@@ -197,7 +201,8 @@ class ImapProtocol(ProtocolTemplate):
         listofMails = []
         folder_names = [folder[2] for folder in self.IMAP.list_folders()]
         for mailbox in folder_names:
-            listofMails.append(self._get_emails(mailbox,date))
+            print(mailbox)
+            listofMails += (self._get_emails(mailbox,date))
         return listofMails
     
     @error_handler
@@ -261,7 +266,7 @@ class ImapProtocol(ProtocolTemplate):
         except Exception as e:
             raise e
         finally:
-            self.IMAP.close_folder(folder)
+            self.IMAP.close_folder()
         return listofMails
 
     @error_handler
@@ -322,6 +327,7 @@ class ExchangeProtocol(ProtocolTemplate):
     
     @error_handler
     def send_email(self,email:Email):
+        """Requierment: User is logged in"""
         if not self.logged_in:
             raise ee.NotLoggedIn()
         
@@ -489,7 +495,7 @@ def get_contact(email : str) -> Contact:
 
 
 def safe_file(filename:str,content:bytes)->str:
-    max_size = 10*1024*1024 # muss noch von wo anders bestimmt werden
+    max_size = 10*1024*1024 # muss noch von wo anders bestimmt werden 10 MB
     if len(content) > max_size:
         raise BufferError(f"File size exceeds limit of {max_size} bytes")
     temp_dir = tempfile.gettempdir()
