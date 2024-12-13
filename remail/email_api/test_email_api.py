@@ -1,5 +1,6 @@
 from remail.email_api.object import Email, EmailReception,Contact, RecipientKind
 from remail.email_api.service import ImapProtocol,ExchangeProtocol,ProtocolTemplate
+import remail.email_api.credentials_helper as ch
 from datetime import datetime
 from tzlocal import get_localzone
 from contextlib import contextmanager
@@ -38,7 +39,9 @@ def email_test_context():
     imap = ImapProtocol()
     exchange = ExchangeProtocol()
     try:
+        ch.protocol = ch.Protocol.IMAP
         imap.login()
+        ch.protocol = ch.Protocol.EXCHANGE
         exchange.login()
         yield imap,exchange
     finally:
