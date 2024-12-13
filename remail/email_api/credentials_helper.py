@@ -9,6 +9,7 @@ class Protocol(str,Enum):
 protocol = Protocol.IMAP
 
 def get_email():
+    """returns the email address of the Imap or Exchange user"""
     email = os.environ.get("EMAIL"+protocol)
     if email:
         return email
@@ -18,6 +19,7 @@ def get_email():
         return "praxisprojekt-remail@uni-due.de"
 
 def get_password():
+    """returns the password of the user"""
     password = os.environ.get("PASSWORD"+protocol)
     if password:
         return password
@@ -29,12 +31,14 @@ def get_password():
     #keyring.set_password("remail/"+protocol,"praxisprojekt-remail@uni-due.de",password)
 
 def get_username():
+    """returns the username of the user"""
     username = os.environ.get("REMAIL_USERNAME")
     if username:
         return username
     return "ude-1729267167"
 
 def get_host():
+    """returns the Imap host address"""
     host = os.environ.get("REMAIL_HOST")
     if host:
         return host
