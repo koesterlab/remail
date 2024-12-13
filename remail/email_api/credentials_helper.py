@@ -1,6 +1,5 @@
 from enum import Enum
 import keyring
-from getpass import getpass
 import os
 
 class Protocol(str,Enum):
