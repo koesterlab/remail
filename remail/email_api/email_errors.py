@@ -2,17 +2,16 @@ class EmailError(Exception):
     """base class for remail exceptions"""
     pass
 
-class InvalidEmail(EmailError):
-    """email address in Credentials is invalid. Only raised in exchange"""
-    pass
-
 class InvalidLoginData(EmailError):
+    """Login Data is wrong (email or password)"""
     pass
 
 class NotLoggedIn(EmailError):
+    """User is not logged in"""
     pass
 
 class UnknownError(EmailError):
+    """Exception raised is not handled yet"""
     pass
 
 class RecipientsFail(EmailError):
@@ -23,11 +22,8 @@ class ServerConnectionFail(EmailError):
     """server connection unexpectedly fails, or attempt to use instance without connection"""
     pass
 
-class SMTPSenderFalse(EmailError):
-    """Sender refused"""
-    pass
-
 class SMTPDataFalse(EmailError):
+    """Server replied with an unexpected error code (other than a refusal of a recipient)"""
     pass
 
 class CommandNotSupported(EmailError):
