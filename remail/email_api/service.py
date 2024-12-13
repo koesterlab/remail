@@ -89,7 +89,10 @@ class ProtocolTemplate(ABC):
     @abstractmethod
     def get_emails(self, date: datetime = None)->list[Email]:
         """Returns a list of email objects later than the datetime.
-        If no datetime is passed, it returns all emails"""
+        If no datetime is passed, it returns all emails
+        tzinfo is mandatory in datetime:
+            eg: datetime(2024,12,13,10,0,0,tzinfo=tzlocal.get_localzone()) 
+            ->import: tzlocal"""
         pass
 
 class ImapProtocol(ProtocolTemplate):
