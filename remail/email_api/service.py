@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from remail.email_api.object import Email, EmailReception, Attachment, Contact, RecipientKind
+from remail.database_api.models import Email, EmailReception, Attachment, Contact, RecipientKind
 from imapclient import IMAPClient
 from smtplib import SMTP_SSL,SMTP_SSL_PORT, SMTPAuthenticationError,SMTPRecipientsRefused,SMTPServerDisconnected,SMTPDataError,SMTPConnectError,SMTPHeloError,SMTPNotSupportedError
 import email
