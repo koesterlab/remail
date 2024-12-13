@@ -65,21 +65,24 @@ class ProtocolTemplate(ABC):
         pass
 
     @abstractmethod
-    def logout(self) -> bool:
+    def logout(self):
         """logs out the user"""
         pass
 
     @abstractmethod
-    def send_email(self,email: Email) -> bool:
-        """Requierement: User is logged in"""
+    def send_email(self,email: Email):
+        """sends the given email"""
         pass
 
     @abstractmethod
     def get_deleted_emails(self, uids: list[str]) -> list[str]:
+        """returns a list of the message ids, that still exist in the database but don't
+        exist on the server anymore"""
         pass
 
     @abstractmethod
-    def mark_email(self, uid: str, read: bool):
+    def mark_email(self, message_id: str, read: bool):
+        """Marks the email with given message_id as read(True)/unread(False)"""
         pass
 
     @abstractmethod
@@ -134,8 +137,6 @@ class ImapProtocol(ProtocolTemplate):
         
     @error_handler
     def send_email(self, email:Email):
-        """Requierement: User is logged in"""
-
         if not self.logged_in:
             raise ee.NotLoggedIn()
 
@@ -372,32 +373,32 @@ class ExchangeProtocol(ProtocolTemplate):
         m.send()
 
     @error_handler
-    def mark_email(self, uid: str, read : bool):
+    def mark_email(self, message_id: str, read : bool):
         if not self.logged_in:
             raise ee.NotLoggedIn()
         
-        for item in self.acc.inbox.filter(message_id=uid):
+        for item in self.acc.inbox.filter(message_id=message_id):
             item.is_read = read
             item.save(update_fields = ["is_read"])
 
     @error_handler
-    def delete_email(self, uid:str):
+    def delete_email(self, message_id:str):
         """Requierment: User is logged in
         moves the email in the trash folder"""
         if not self.logged_in:
             raise ee.NotLoggedIn()
         
-        for item in self.acc.inbox.filter(message_id=uid):
+        for item in self.acc.inbox.filter(message_id=message_id):
             item.move_to_trash()
         
     @error_handler
-    def get_deleted_emails(self, uids : list[str]) -> list[str]:
+    def get_deleted_emails(self, message_ids : list[str]) -> list[str]:
         if not self.logged_in:
             raise ee.NotLoggedIn()
         
         server_uids = [item.message_id for item in self.acc.inbox.all()]
 
-        return list(set(uids) - set(server_uids))
+        return list(set(message_ids) - set(server_uids))
 
     @error_handler
     def get_emails(self, date : datetime = None)->list[Email]:
