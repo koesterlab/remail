@@ -36,8 +36,10 @@ def wait_for_email(protocol:ProtocolTemplate,dtime:datetime,timeout:int = 30):
 
 @contextmanager
 def email_test_context():
-    imap = ImapProtocol()
-    exchange = ExchangeProtocol()
+    ch.protocol = ch.Protocol.IMAP
+    imap = ImapProtocol(ch.get_email(),ch.get_password(),ch.get_host())
+    ch.protocol = ch.Protocol.EXCHANGE
+    exchange = ExchangeProtocol(ch.get_email(),ch.get_password(),ch.get_username())
     try:
         ch.protocol = ch.Protocol.IMAP
         imap.login()
@@ -65,7 +67,7 @@ def test_mails():
             assert len(imap.get_emails(date)) == 0
             #schauen ob die email deleted ist
             message_ids = imap.get_deleted_emails([test_mail])
-            assert test_mail.message_id == message_ids[0], "Imao deleted Fehler"
+            assert test_mail.message_id == message_ids[0], "Imap deleted Fehler"
             # senden mit imap und auslesen mit exchange
             imap.send_email(imap_test_email)
             test_mail = wait_for_email(exchange,date)
