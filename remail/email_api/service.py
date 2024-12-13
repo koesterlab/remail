@@ -82,7 +82,7 @@ class ProtocolTemplate(ABC):
         pass
 
     @abstractmethod
-    def delete_email(self, message_id: str, hard_delete: bool):
+    def delete_email(self, message_id: str, hard_delete: bool = False):
         """Deletes the email with given message_id
         hard_delete = True -> completely removes email
         hard_delete = False -> moves to trash folder"""
@@ -369,13 +369,16 @@ class ExchangeProtocol(ProtocolTemplate):
             item.save(update_fields = ["is_read"])
 
     @error_handler
-    def delete_email(self, message_id:str, hard_delete: bool):
+    def delete_email(self, message_id:str, hard_delete: bool = False):
         """moves the email in the trash folder"""
         if not self.logged_in:
             raise ee.NotLoggedIn()
         
         for item in self.acc.inbox.filter(message_id=message_id):
-            item.move_to_trash()
+            if hard_delete:
+                item.delete()
+            else:
+                item.move_to_trash()
         
     @error_handler
     def get_deleted_emails(self, message_ids : list[str]) -> list[str]:
@@ -387,7 +390,7 @@ class ExchangeProtocol(ProtocolTemplate):
         return list(set(message_ids) - set(server_uids))
 
     def _get_items(self, start_date: datetime = None):
-        email_folders = [f for f in self.acc.root.walk() if f.CONTAINER_CLASS == 'IPF.Note' and f not in {self.acc.trash, self.acc.junk}]
+        email_folders = [f for f in self.acc.root.walk() if f.CONTAINER_CLASS == 'IPF.Note' and f not in {self.acc.trash, self.acc.junk, self.acc.drafts}]
         folder_collection = FolderCollection(account=self.acc,folders = email_folders)
         if start_date:
             for item in folder_collection.filter(datetime_received__gte = start_date):
