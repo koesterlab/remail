@@ -97,17 +97,12 @@ class ProtocolTemplate(ABC):
 
 class ImapProtocol(ProtocolTemplate):
     
-    #email address
-    user_username = None
-    #or imappassword
-    user_password = None
-    host = ch.get_host()
-    def __init__(self):
+    def __init__(self, email:str, password: str, host: str):
+        self.user_username = email
+        self.user_password = password
+        self.host = host
         self.IMAP = IMAPClient(self.host,use_uid=True)
         
-
-    SMTP_HOST = host
-
     @property
     def logged_in(self) -> bool:
         return self.user_password is not None and self.user_username is not None
@@ -116,8 +111,6 @@ class ImapProtocol(ProtocolTemplate):
         if self.logged_in: 
             return
         try:
-            self.user_username = ch.get_email()
-            self.user_password = ch.get_password()
             self.IMAP.login(self.user_username, self.user_password)
         except LoginError:
             raise ee.InvalidLoginData() from None
@@ -175,7 +168,7 @@ class ImapProtocol(ProtocolTemplate):
             msg.add_attachment(file_data, maintype = main_type, subtype = sub_type, filename = filename)
 
         #connect/authenticate
-        smtp_server = SMTP_SSL(self.SMTP_HOST, port = SMTP_SSL_PORT)
+        smtp_server = SMTP_SSL(self.host, port = SMTP_SSL_PORT)
         smtp_server.login(SMTP_USER, SMTP_PASS)
         smtp_server.send_message(msg)
         
@@ -297,10 +290,13 @@ class ImapProtocol(ProtocolTemplate):
 class ExchangeProtocol(ProtocolTemplate):
     
 
-    def __init__(self):
+    def __init__(self, email: str, password: str, username: str):
         self.cred = None
         self.acc = None
         self._logged_in = False
+        self.email = email
+        self.password = password
+        self.username = username
 
     @property
     def logged_in(self) -> bool:
@@ -311,14 +307,9 @@ class ExchangeProtocol(ProtocolTemplate):
         
         if self.logged_in:
             return
-
-        user = ch.get_email()
-        password = ch.get_password()
-        username = ch.get_username()
-
         
-        self.cred = Credentials(username,password)
-        self.acc = Account(user, credentials=self.cred, autodiscover=True)
+        self.cred = Credentials(self.username,self.password)
+        self.acc = Account(self.email, credentials=self.cred, autodiscover=True)
         self._logged_in = True
         
     
