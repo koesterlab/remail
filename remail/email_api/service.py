@@ -60,7 +60,7 @@ class ProtocolTemplate(ABC):
         pass
     
     @abstractmethod
-    def login(self) -> bool:
+    def login(self):
         """logs in user with password and username/email """
         pass
 
@@ -75,7 +75,7 @@ class ProtocolTemplate(ABC):
         pass
 
     @abstractmethod
-    def get_deleted_emails(self, uids: list[str]) -> list[str]:
+    def get_deleted_emails(self, message_ids: list[str]) -> list[str]:
         """returns a list of the message ids, that still exist in the database but don't
         exist on the server anymore"""
         pass
