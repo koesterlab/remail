@@ -65,7 +65,7 @@ def test_mails():
             #löschen der Email mit imap
             imap.delete_email(test_mail.message_id)
             assert len(imap.get_emails(date)) == 0
-            #schauen ob die email deleted ist
+            #schauen ob die email deleted ist bei imap
             message_ids = imap.get_deleted_emails([test_mail])
             assert test_mail.message_id == message_ids[0], "Imap deleted Fehler"
             # senden mit imap und auslesen mit exchange
@@ -75,6 +75,7 @@ def test_mails():
             #löschen der Email mit exchange
             exchange.delete_email(test_mail.message_id)
             assert len(exchange.get_emails(date)) == 0
+            #schauen ob die email deleted ist exchange
             message_ids = exchange.get_deleted_emails([test_mail])
             assert test_mail.message_id == message_ids[0], "Exchange deleted Fehler"
         except Exception:

@@ -233,7 +233,7 @@ class ImapProtocol(ProtocolTemplate):
                                     attachments_file_names += [safe_file(filename,part.get_payload(decode=True))]
                                     
                         #get HTML parts
-                        if part.get_content_disposition() == "text/html":
+                        if part.get_content_type() == "text/html":
                             html_content = part.get_payload(decode=True).decode(part.get_content_charset() or "utf-8",errors="replace")
                             html_parts.append(html_content)
 
@@ -482,9 +482,11 @@ def get_contact(email : str) -> Contact:
 def safe_file(filename:str,content:bytes)->str:
     max_size = 10*1024*1024 # muss noch von wo anders bestimmt werden
     if len(content) > max_size:
-        raise BufferError
+        raise BufferError(f"File size exceeds limit of {max_size} bytes")
     temp_dir = tempfile.gettempdir()
     safe_filename = secure_filename(filename)
+    if not safe_filename:
+        raise ValueError("Invalid filename")
     filepath = os.path.join(temp_dir,safe_filename)
     try:
         with open(filepath,"wb") as f:
