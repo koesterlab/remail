@@ -56,19 +56,21 @@ class ProtocolTemplate(ABC):
     @property
     @abstractmethod
     def logged_in(self) -> bool:
+        """returns true if user is logged in otherwise false"""
         pass
     
     @abstractmethod
     def login(self) -> bool:
+        """logs in user with password and username/email """
         pass
 
     @abstractmethod
     def logout(self) -> bool:
+        """logs out the user"""
         pass
 
     @abstractmethod
     def send_email(self,email: Email) -> bool:
-        """Requierement: User is logged in"""
         pass
 
     @abstractmethod
@@ -105,12 +107,12 @@ class ImapProtocol(ProtocolTemplate):
     def logged_in(self) -> bool:
         return self.user_password is not None and self.user_username is not None
     
-    def login(self) -> bool:
+    def login(self):
         if self.logged_in: 
-            return True
+            return
         try:
-            self.user_username = "thatchmilo35@gmail.com"
-            self.user_password = keyring.get_password("remail/IMAP","thatchmilo35@gmail.com")
+            self.user_username = ch.get_email()
+            self.user_password = ch.get_password()
             self.IMAP.login(self.user_username, self.user_password)
         except LoginError:
             raise ee.InvalidLoginData() from None
