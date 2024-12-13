@@ -8,7 +8,6 @@ from email.message import EmailMessage
 from datetime import datetime
 from exchangelib import Credentials, Account, Message, FileAttachment, EWSDateTime, UTC, errors as exch_errors
 import os
-import keyring
 from bs4 import BeautifulSoup
 import mimetypes
 from werkzeug.utils import secure_filename
@@ -488,23 +487,6 @@ def create_email(
 def get_contact(email : str) -> Contact:
     return Contact(email_address=email)
 
-def save_credentials():
-    
-    password_exchange = keyring.get_password("remail/exchange","praxisprojekt-remail@uni-due.de")
-    password_imap = keyring.get_password("remail/IMAP","thatchmilo35@gmail.com")
-    if not password_exchange:
-        password = input("Gebe das Exchangepasswort ein, um es auf deinem Rechner zu hinterlegen: ")
-        keyring.set_password("remail/exchange","praxisprojekt-remail@uni-due.de",password)
-    if not password_imap:
-        password = input("Gebe das IMAPpasswort ein, um es auf deinem Rechner zu hinterlegen: ")
-        keyring.set_password("remail/IMAP","thatchmilo35@gmail.com",password)
-
-def change_credentials_exchange():
-    password = input("Gebe das Exchangepasswort ein, um es auf deinem Rechner zu hinterlegen: ")
-    keyring.set_password("remail/exchange","praxisprojekt-remail@uni-due.de",password)
-def change_credentials_imap():
-    password = input("Gebe das IMAPpasswort ein, um es auf deinem Rechner zu hinterlegen: ")
-    keyring.set_password("remail/IMAP","thatchmilo35@gmail.com",password)
 
 def safe_file(filename:str,content:bytes)->str:
     max_size = 10*1024*1024 # muss noch von wo anders bestimmt werden
