@@ -65,17 +65,19 @@ class ProtocolTemplate(ABC):
         pass
 
     @abstractmethod
-    def logout(self) -> bool:
+    def logout(self):
         """logs out the user"""
         pass
 
     @abstractmethod
-    def send_email(self,email: Email) -> bool:
-        """Requierement: User is logged in"""
+    def send_email(self,email: Email):
+        """sends the given email"""
         pass
 
     @abstractmethod
     def get_deleted_emails(self, uids: list[str]) -> list[str]:
+        """returns a list of the message ids, that still exist in the database but don't
+        exist on the server anymore"""
         pass
 
     @abstractmethod
@@ -134,8 +136,6 @@ class ImapProtocol(ProtocolTemplate):
         
     @error_handler
     def send_email(self, email:Email):
-        """Requierement: User is logged in"""
-
         if not self.logged_in:
             raise ee.NotLoggedIn()
 
