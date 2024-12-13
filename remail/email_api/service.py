@@ -71,6 +71,7 @@ class ProtocolTemplate(ABC):
 
     @abstractmethod
     def send_email(self,email: Email) -> bool:
+        """Requierement: User is logged in"""
         pass
 
     @abstractmethod
@@ -78,16 +79,18 @@ class ProtocolTemplate(ABC):
         pass
 
     @abstractmethod
-    def mark_email(self, uid: str, read: bool) -> bool:
+    def mark_email(self, uid: str, read: bool):
         pass
 
     @abstractmethod
-    def delete_email(self, uid: str) -> bool:
-        """Requierement: User is logged in"""
+    def delete_email(self, message_id: str):
+        """Deletes the email with given message_id"""
         pass
 
     @abstractmethod
     def get_emails(self, date: datetime = None)->list[Email]:
+        """Returns a list of email objects later than the datetime.
+        If no datetime is passed, it returns all emails"""
         pass
 
 class ImapProtocol(ProtocolTemplate):
