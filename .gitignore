@@ -1,4 +1,6 @@
-
-/db
 *.log
-/src/__pycache__
+/local-embedding-model
+/llm/__pycache__
+/llm/db/chroma_db
+/llm/db
+*.gguf
