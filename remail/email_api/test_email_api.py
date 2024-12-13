@@ -54,7 +54,7 @@ def email_test_context():
 
 
 def test_mails():
-    """testing get_mails with date, delete with msgID"""
+    """testing get_mails with date, delete with msgID,get_deleted_emails"""
     with email_test_context() as (imap,exchange):
         try:
             date = datetime.now(get_localzone())
@@ -78,7 +78,7 @@ def test_mails():
             #schauen ob die email deleted ist exchange
             message_ids = exchange.get_deleted_emails([test_mail])
             assert test_mail.message_id == message_ids[0], "Exchange deleted Fehler"
-        except Exception:
-            return
+        except Exception as e:
+            raise e
 
 
