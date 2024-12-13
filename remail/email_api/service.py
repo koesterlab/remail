@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from remail.email_api.object import Email, EmailReception, Attachment, Contact, RecipientKind
 from imapclient import IMAPClient
-from smtplib import SMTP_SSL,SMTP_SSL_PORT, SMTPAuthenticationError,SMTPRecipientsRefused,SMTPServerDisconnected,SMTPSenderRefused,SMTPDataError,SMTPConnectError,SMTPHeloError,SMTPNotSupportedError
+from smtplib import SMTP_SSL,SMTP_SSL_PORT, SMTPAuthenticationError,SMTPRecipientsRefused,SMTPServerDisconnected,SMTPDataError,SMTPConnectError,SMTPHeloError,SMTPNotSupportedError
 import email
 from imapclient.exceptions import LoginError
 from email.message import EmailMessage
@@ -22,29 +22,32 @@ import remail.email_api.email_errors as ee
 def error_handler(func):
     
     def wrapper(self, *args, **kwargs):
+
+        RECIPIENTSFAIL = (SMTPRecipientsRefused, exch_errors.ErrorInvalidRecipients)
+        CONNECTIONFAIL = (SMTPConnectError, exch_errors.ErrorConnectionFailed, exch_errors.TransportError, SMTPServerDisconnected,SMTPHeloError)
+        INVALIDLOGINDATA = (exch_errors.UnauthorizedError, LoginError,SMTPAuthenticationError)
+
         try:
             return func(self, *args, **kwargs)
         except ee.EmailError as e:
             raise e
         except ValueError as e:
             if "is not an email address" in str(e):
-                raise ee.InvalidEmail() from None
+                raise ee.InvalidLoginData() from None
             else:
-                raise ee.UnknownError(f"An unexpected error occurred: {str(e)}")
-        except (exch_errors.UnauthorizedError, LoginError,SMTPHeloError,SMTPAuthenticationError):
+                raise ee.UnknownError(f"An unexpected error occurred: {str(e)}") from e
+        except INVALIDLOGINDATA:
             raise ee.InvalidLoginData() from None
         except SMTPNotSupportedError:
             raise ee.CommandNotSupported() from None
-        except (SMTPConnectError, exch_errors.ErrorConnectionFailed, exch_errors.TransportError, SMTPServerDisconnected):
+        except CONNECTIONFAIL:
             raise ee.ServerConnectionFail() from None
         except SMTPDataError:
             raise ee.SMTPDataFalse() from None
-        except SMTPSenderRefused:
-            raise ee.SMTPSenderFalse() from None
-        except (SMTPRecipientsRefused, exch_errors.ErrorInvalidRecipients):
+        except RECIPIENTSFAIL:
             raise ee.RecipientsFail() from None
         except Exception as e:
-            raise ee.UnknownError(f"An unexpected error occurred: {str(e)}")
+            raise ee.UnknownError(f"An unexpected error occurred: {str(e)}") from e
     return wrapper
 
 

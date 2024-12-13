@@ -25,8 +25,9 @@ def get_password():
     password = keyring.get_password("remail/"+protocol,"praxisprojekt-remail@uni-due.de")
     if password:
         return password
-    password = getpass("Gebe das "+ protocol+"-Passwort ein, um es auf deinem Rechner zu hinterlegen: ")
-    keyring.set_password("remail/"+protocol,"praxisprojekt-remail@uni-due.de",password)
+    return ""
+    #password = getpass("Gebe das "+ protocol+"-Passwort ein, um es auf deinem Rechner zu hinterlegen: ")
+    #keyring.set_password("remail/"+protocol,"praxisprojekt-remail@uni-due.de",password)
 
 def get_username():
     username = os.environ.get("REMAIL_USERNAME")
