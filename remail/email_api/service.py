@@ -126,14 +126,11 @@ class ImapProtocol(ProtocolTemplate):
             raise e
 
 
-    def logout(self) -> bool:
-        try:
-            self.IMAP.logout()
-            self.user_password = None
-            self.user_username = None
-            return True
-        except Exception:
-            return False
+    def logout(self):
+        self.IMAP.logout()
+        self.user_password = None
+        self.user_username = None
+
         
     @error_handler
     def send_email(self, email:Email):
