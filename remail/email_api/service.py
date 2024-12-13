@@ -126,7 +126,7 @@ class ImapProtocol(ProtocolTemplate):
         self.IMAP.logout()
         self.user_password = None
         self.user_username = None
-        self.logged_in = False
+        self._logged_in = False
 
         
     @error_handler
@@ -199,9 +199,9 @@ class ImapProtocol(ProtocolTemplate):
         if not self.logged_in: 
             raise ee.NotLoggedIn()
         listofMails = []
-        folder_names = [folder[2] for folder in self.IMAP.list_folders()]
+        folder_names = list(set([folder[2] for folder in self.IMAP.list_folders()])-set(["[Gmail]"]))
+        print(folder_names)
         for mailbox in folder_names:
-            print(mailbox)
             listofMails += (self._get_emails(mailbox,date))
         return listofMails
     
