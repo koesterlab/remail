@@ -22,7 +22,7 @@ def get_password():
     password = os.environ.get("PASSWORD"+protocol)
     if password:
         return password
-    password = keyring.get_password("remail/"+protocol,"praxisprojekt-remail@uni-due.de")
+    password = keyring.get_password("remail/"+protocol,get_email())
     if password:
         return password
     return ""
