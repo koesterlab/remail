@@ -1,4 +1,4 @@
-from remail.email_api.object import Email, EmailReception,Contact, RecipientKind
+from remail.database_api.models import Email, EmailReception,Contact, RecipientKind
 from remail.email_api.service import ImapProtocol,ExchangeProtocol,ProtocolTemplate
 import remail.email_api.credentials_helper as ch
 from datetime import datetime
