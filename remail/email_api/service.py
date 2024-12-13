@@ -6,7 +6,7 @@ import email
 from imapclient.exceptions import LoginError,IMAPClientAbortError,IMAPClientError,CapabilityError
 from email.message import EmailMessage
 from datetime import datetime
-from exchangelib import Credentials, Account, Message, FileAttachment, EWSDateTime, UTC, errors as exch_errors
+from exchangelib import Credentials, Account, Message, FileAttachment, EWSDateTime, UTC, errors as exch_errors, FolderCollection
 import os
 from bs4 import BeautifulSoup
 import mimetypes
@@ -383,9 +383,21 @@ class ExchangeProtocol(ProtocolTemplate):
         if not self.logged_in:
             raise ee.NotLoggedIn()
         
-        server_uids = [item.message_id for item in self.acc.inbox.all()]
+        server_uids = [item.message_id for item in self._get_items()]
 
         return list(set(message_ids) - set(server_uids))
+
+    def _get_items(self, start_date: datetime = None):
+        email_folders = [f for f in self.acc.root.walk() if f.CONTAINER_CLASS == 'IPF.Note' and f not in {self.acc.trash, self.acc.junk}]
+        folder_collection = FolderCollection(account=self.acc,folders = email_folders)
+        if start_date:
+            for item in folder_collection.filter(datetime_received__gte = start_date):
+                if isinstance(item, Message):
+                    yield item
+        else:
+            for item in folder_collection.all():
+                if isinstance(item, Message):
+                    yield item
 
     @error_handler
     def get_emails(self, date : datetime = None)->list[Email]:
@@ -393,15 +405,9 @@ class ExchangeProtocol(ProtocolTemplate):
         if not self.logged_in:
             raise ee.NotLoggedIn()
 
-        os.makedirs("attachments", exist_ok=True)
         result = []
-        if not date:
-            for item in self.acc.inbox.all():
-                result += self._get_email_exchange(item)
-        else:
-            start_date = EWSDateTime.from_datetime(date).astimezone(UTC)
-            for item in self.acc.inbox.filter(datetime_received__gte = start_date):
-                result += self._get_email_exchange(item)
+        for item in self._get_items(date):
+            result += self._get_email_exchange(item)
         return result
 
     #Attachments sind leer
