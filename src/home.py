@@ -29,6 +29,9 @@ with st.sidebar:
 
     if st.button("Add Email"):
         st.session_state.show_add_email_form = True
+    if st.button("New Contact"):
+        st.session_state.show_new_contact_form = True
+
 
 # "Add Email" form
 def add_email_form():
@@ -54,9 +57,27 @@ def add_email_form():
         if st.button("Cancel"):
             st.session_state.show_add_email_form = False
 
+# "New Contact" form
+def new_contact_form():
+    st.subheader("Add new contact")
+    contactName = st.text_input("Name:")
+    emailAdress = st.text_input("E-Mail adress:")
+    
+
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Create new contact"):
+            st.success("Created contact")
+
+    with col2:
+        if st.button("Cancel"):
+            st.session_state.show_new_contact_form = False
+
 # Main Content
 if st.session_state.get("show_add_email_form", False):
     add_email_form()
+elif st.session_state.get("show_new_contact_form", False):
+    new_contact_form()
 else:
     col1, col2 = st.columns([1, 2])
 
