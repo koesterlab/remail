@@ -174,7 +174,6 @@ class ImapProtocol(ProtocolTemplate):
         
     @error_handler
     def delete_email(self, message_id:str):
-        """Requierment: User is logged in"""
         if not self.logged_in: 
             raise ee.NotLoggedIn()
         folder_names = [folder[2] for folder in self.IMAP.list_folders()]
@@ -317,7 +316,6 @@ class ExchangeProtocol(ProtocolTemplate):
     
     @error_handler
     def send_email(self,email:Email):
-        """Requierment: User is logged in"""
         if not self.logged_in:
             raise ee.NotLoggedIn()
         
@@ -367,8 +365,7 @@ class ExchangeProtocol(ProtocolTemplate):
 
     @error_handler
     def delete_email(self, message_id:str):
-        """Requierment: User is logged in
-        moves the email in the trash folder"""
+        """moves the email in the trash folder"""
         if not self.logged_in:
             raise ee.NotLoggedIn()
         
