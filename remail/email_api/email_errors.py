@@ -25,7 +25,3 @@ class ServerConnectionFail(EmailError):
 class SMTPDataFalse(EmailError):
     """Server replied with an unexpected error code (other than a refusal of a recipient)"""
     pass
-
-class CommandNotSupported(EmailError):
-    """command is not supported by the server"""
-    pass

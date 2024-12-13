@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from remail.database_api.models import Email, EmailReception, Attachment, Contact, RecipientKind
 from imapclient import IMAPClient
-from smtplib import SMTP_SSL,SMTP_SSL_PORT, SMTPAuthenticationError,SMTPRecipientsRefused,SMTPServerDisconnected,SMTPDataError,SMTPConnectError,SMTPHeloError,SMTPNotSupportedError
+from smtplib import SMTP_SSL,SMTP_SSL_PORT, SMTPAuthenticationError,SMTPRecipientsRefused,SMTPServerDisconnected,SMTPDataError,SMTPConnectError,SMTPHeloError
 import email
 from imapclient.exceptions import LoginError,IMAPClientAbortError,IMAPClientError,CapabilityError
 from email.message import EmailMessage
@@ -15,7 +15,6 @@ import tempfile
 from email.header import decode_header
 from email.utils import parsedate_to_datetime
 from tzlocal import get_localzone
-import remail.email_api.credentials_helper as ch
 import remail.email_api.email_errors as ee
 
 def error_handler(func):
@@ -37,8 +36,6 @@ def error_handler(func):
                 raise ee.UnknownError(f"An unexpected error occurred: {str(e)}") from e
         except INVALIDLOGINDATA:
             raise ee.InvalidLoginData() from None
-        except SMTPNotSupportedError:
-            raise ee.CommandNotSupported() from None
         except CONNECTIONFAIL:
             raise ee.ServerConnectionFail() from None
         except SMTPDataError:
@@ -85,14 +82,19 @@ class ProtocolTemplate(ABC):
         pass
 
     @abstractmethod
-    def delete_email(self, message_id: str):
-        """Deletes the email with given message_id"""
+    def delete_email(self, message_id: str, hard_delete: bool):
+        """Deletes the email with given message_id
+        hard_delete = True -> completely removes email
+        hard_delete = False -> moves to trash folder"""
         pass
 
     @abstractmethod
     def get_emails(self, date: datetime = None)->list[Email]:
         """Returns a list of email objects later than the datetime.
-        If no datetime is passed, it returns all emails"""
+        If no datetime is passed, it returns all emails
+        tzinfo is mandatory in datetime:
+            eg: datetime(2024,12,13,10,0,0,tzinfo=tzlocal.get_localzone()) 
+            ->import: tzlocal"""
         pass
 
 class ImapProtocol(ProtocolTemplate):
@@ -176,8 +178,7 @@ class ImapProtocol(ProtocolTemplate):
         smtp_server.quit()
         
     @error_handler
-    def delete_email(self, message_id:str):
-        """Requierment: User is logged in"""
+    def delete_email(self, message_id:str, hard_delete: bool):
         if not self.logged_in: 
             raise ee.NotLoggedIn()
         folder_names = [folder[2] for folder in self.IMAP.list_folders()]
@@ -233,7 +234,7 @@ class ImapProtocol(ProtocolTemplate):
                                     attachments_file_names += [safe_file(filename,part.get_payload(decode=True))]
                                     
                         #get HTML parts
-                        if part.get_content_disposition() == "text/html":
+                        if part.get_content_type() == "text/html":
                             html_content = part.get_payload(decode=True).decode(part.get_content_charset() or "utf-8",errors="replace")
                             html_parts.append(html_content)
 
@@ -320,7 +321,6 @@ class ExchangeProtocol(ProtocolTemplate):
     
     @error_handler
     def send_email(self,email:Email):
-        """Requierment: User is logged in"""
         if not self.logged_in:
             raise ee.NotLoggedIn()
         
@@ -369,9 +369,8 @@ class ExchangeProtocol(ProtocolTemplate):
             item.save(update_fields = ["is_read"])
 
     @error_handler
-    def delete_email(self, message_id:str):
-        """Requierment: User is logged in
-        moves the email in the trash folder"""
+    def delete_email(self, message_id:str, hard_delete: bool):
+        """moves the email in the trash folder"""
         if not self.logged_in:
             raise ee.NotLoggedIn()
         
@@ -488,9 +487,11 @@ def get_contact(email : str) -> Contact:
 def safe_file(filename:str,content:bytes)->str:
     max_size = 10*1024*1024 # muss noch von wo anders bestimmt werden
     if len(content) > max_size:
-        raise BufferError
+        raise BufferError(f"File size exceeds limit of {max_size} bytes")
     temp_dir = tempfile.gettempdir()
     safe_filename = secure_filename(filename)
+    if not safe_filename:
+        raise ValueError("Invalid filename")
     filepath = os.path.join(temp_dir,safe_filename)
     try:
         with open(filepath,"wb") as f:
