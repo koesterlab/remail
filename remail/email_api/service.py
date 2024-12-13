@@ -6,7 +6,7 @@ import email
 from imapclient.exceptions import LoginError,IMAPClientAbortError,IMAPClientError,CapabilityError
 from email.message import EmailMessage
 from datetime import datetime
-from exchangelib import Credentials, Account, Message, FileAttachment, EWSDateTime, UTC, errors as exch_errors
+from exchangelib import Credentials, Account, Message, FileAttachment, EWSDateTime, UTC, errors as exch_errors, FolderCollection
 import os
 from bs4 import BeautifulSoup
 import mimetypes
@@ -82,14 +82,19 @@ class ProtocolTemplate(ABC):
         pass
 
     @abstractmethod
-    def delete_email(self, message_id: str):
-        """Deletes the email with given message_id"""
+    def delete_email(self, message_id: str, hard_delete: bool = False):
+        """Deletes the email with given message_id
+        hard_delete = True -> completely removes email
+        hard_delete = False -> moves to trash folder"""
         pass
 
     @abstractmethod
     def get_emails(self, date: datetime = None)->list[Email]:
         """Returns a list of email objects later than the datetime.
-        If no datetime is passed, it returns all emails"""
+        If no datetime is passed, it returns all emails
+        tzinfo is mandatory in datetime:
+            eg: datetime(2024,12,13,10,0,0,tzinfo=tzlocal.get_localzone()) 
+            ->import: tzlocal"""
         pass
 
 class ImapProtocol(ProtocolTemplate):
@@ -176,8 +181,7 @@ class ImapProtocol(ProtocolTemplate):
         smtp_server.quit()
         
     @error_handler
-    def delete_email(self, message_id:str):
-        """Requierment: User is logged in"""
+    def delete_email(self, message_id:str, hard_delete: bool):
         if not self.logged_in: 
             raise ee.NotLoggedIn()
         folder_names = [folder[2] for folder in self.IMAP.list_folders()]
@@ -370,22 +374,37 @@ class ExchangeProtocol(ProtocolTemplate):
             item.save(update_fields = ["is_read"])
 
     @error_handler
-    def delete_email(self, message_id:str):
+    def delete_email(self, message_id:str, hard_delete: bool = False):
         """moves the email in the trash folder"""
         if not self.logged_in:
             raise ee.NotLoggedIn()
         
         for item in self.acc.inbox.filter(message_id=message_id):
-            item.move_to_trash()
+            if hard_delete:
+                item.delete()
+            else:
+                item.move_to_trash()
         
     @error_handler
     def get_deleted_emails(self, message_ids : list[str]) -> list[str]:
         if not self.logged_in:
             raise ee.NotLoggedIn()
         
-        server_uids = [item.message_id for item in self.acc.inbox.all()]
+        server_uids = [item.message_id for item in self._get_items()]
 
         return list(set(message_ids) - set(server_uids))
+
+    def _get_items(self, start_date: datetime = None):
+        email_folders = [f for f in self.acc.root.walk() if f.CONTAINER_CLASS == 'IPF.Note' and f not in {self.acc.trash, self.acc.junk, self.acc.drafts}]
+        folder_collection = FolderCollection(account=self.acc,folders = email_folders)
+        if start_date:
+            for item in folder_collection.filter(datetime_received__gte = start_date):
+                if isinstance(item, Message):
+                    yield item
+        else:
+            for item in folder_collection.all():
+                if isinstance(item, Message):
+                    yield item
 
     @error_handler
     def get_emails(self, date : datetime = None)->list[Email]:
@@ -393,15 +412,9 @@ class ExchangeProtocol(ProtocolTemplate):
         if not self.logged_in:
             raise ee.NotLoggedIn()
 
-        os.makedirs("attachments", exist_ok=True)
         result = []
-        if not date:
-            for item in self.acc.inbox.all():
-                result += self._get_email_exchange(item)
-        else:
-            start_date = EWSDateTime.from_datetime(date).astimezone(UTC)
-            for item in self.acc.inbox.filter(datetime_received__gte = start_date):
-                result += self._get_email_exchange(item)
+        for item in self._get_items(date):
+            result += self._get_email_exchange(item)
         return result
 
     #Attachments sind leer
