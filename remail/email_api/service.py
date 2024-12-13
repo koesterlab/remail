@@ -3,7 +3,7 @@ from remail.email_api.object import Email, EmailReception, Attachment, Contact, 
 from imapclient import IMAPClient
 from smtplib import SMTP_SSL,SMTP_SSL_PORT, SMTPAuthenticationError,SMTPRecipientsRefused,SMTPServerDisconnected,SMTPDataError,SMTPConnectError,SMTPHeloError,SMTPNotSupportedError
 import email
-from imapclient.exceptions import LoginError
+from imapclient.exceptions import LoginError,IMAPClientAbortError,IMAPClientError,CapabilityError
 from email.message import EmailMessage
 from datetime import datetime
 from exchangelib import Credentials, Account, Message, FileAttachment, EWSDateTime, UTC, errors as exch_errors
@@ -24,7 +24,7 @@ def error_handler(func):
     def wrapper(self, *args, **kwargs):
 
         RECIPIENTSFAIL = (SMTPRecipientsRefused, exch_errors.ErrorInvalidRecipients)
-        CONNECTIONFAIL = (SMTPConnectError, exch_errors.ErrorConnectionFailed, exch_errors.TransportError, SMTPServerDisconnected,SMTPHeloError)
+        CONNECTIONFAIL = (SMTPConnectError, exch_errors.ErrorConnectionFailed, exch_errors.TransportError, SMTPServerDisconnected,SMTPHeloError,IMAPClientError,IMAPClientAbortError,CapabilityError)
         INVALIDLOGINDATA = (exch_errors.UnauthorizedError, LoginError,SMTPAuthenticationError)
 
         try:
