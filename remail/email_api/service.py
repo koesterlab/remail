@@ -37,7 +37,6 @@ def error_handler(func):
         except INVALIDLOGINDATA:
             raise ee.InvalidLoginData() from None
         except CONNECTIONFAIL:
-            raise ee.ServerConnectionFail() from None
         except SMTPDataError:
             raise ee.SMTPDataFalse() from None
         except RECIPIENTSFAIL:
@@ -186,9 +185,11 @@ class ImapProtocol(ProtocolTemplate):
             self.IMAP.select_folder(mailbox)
             messages_ids = self.IMAP.search(['HEADER', 'Message-ID', message_id])
             if messages_ids:
+                if hard_delete:
                     self.IMAP.delete_messages(messages_ids)
                     self.IMAP.expunge()
-            
+                else:
+                    self.IMAP.move(messages_ids,"Trash")
     @error_handler
     def get_emails(self, date : datetime = None)->list[Email]:
         if not self.logged_in: 
