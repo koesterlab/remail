@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from remail.database_api.models import Email, EmailReception, Attachment, Contact, RecipientKind
 from imapclient import IMAPClient
-from smtplib import SMTP_SSL,SMTP_SSL_PORT, SMTPAuthenticationError,SMTPRecipientsRefused,SMTPServerDisconnected,SMTPDataError,SMTPConnectError,SMTPHeloError,SMTPNotSupportedError
+from smtplib import SMTP_SSL,SMTP_SSL_PORT, SMTPAuthenticationError,SMTPRecipientsRefused,SMTPServerDisconnected,SMTPDataError,SMTPConnectError,SMTPHeloError
 import email
 from imapclient.exceptions import LoginError,IMAPClientAbortError,IMAPClientError,CapabilityError
 from email.message import EmailMessage
@@ -36,8 +36,6 @@ def error_handler(func):
                 raise ee.UnknownError(f"An unexpected error occurred: {str(e)}") from e
         except INVALIDLOGINDATA:
             raise ee.InvalidLoginData() from None
-        except SMTPNotSupportedError:
-            raise ee.CommandNotSupported() from None
         except CONNECTIONFAIL:
             raise ee.ServerConnectionFail() from None
         except SMTPDataError:
