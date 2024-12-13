@@ -184,7 +184,7 @@ class ImapProtocol(ProtocolTemplate):
     def delete_email(self, message_id:str, hard_delete: bool):
         if not self.logged_in: 
             raise ee.NotLoggedIn()
-        folder_names = [folder[2] for folder in self.IMAP.list_folders()]
+        folder_names = self._get_folder_names()
         for mailbox in folder_names:
             self.IMAP.select_folder(mailbox)
             messages_ids = self.IMAP.search(['HEADER', 'Message-ID', message_id])
@@ -199,7 +199,7 @@ class ImapProtocol(ProtocolTemplate):
         if not self.logged_in: 
             raise ee.NotLoggedIn()
         listofMails = []
-        folder_names = list(set([folder[2] for folder in self.IMAP.list_folders()])-set(["[Gmail]"]))
+        folder_names = self._get_folder_names()
         print(folder_names)
         for mailbox in folder_names:
             listofMails += (self._get_emails(mailbox,date))
@@ -267,6 +267,7 @@ class ImapProtocol(ProtocolTemplate):
             raise e
         finally:
             self.IMAP.close_folder()
+        print(folder, len(listofMails))
         return listofMails
 
     @error_handler
@@ -274,7 +275,8 @@ class ImapProtocol(ProtocolTemplate):
         if not self.logged_in: 
             raise ee.NotLoggedIn()
         listofUIPsIMAP = []
-        for mailbox in [folder[2] for folder in self.IMAP.list_folders()]:
+        folder_names = self._get_folder_names()
+        for mailbox in folder_names:
             self.IMAP.select_folder(mailbox)
             list_messages_ids = self.IMAP.search(["ALL"])
             for _,message_data in self.IMAP.fetch(list_messages_ids,["RFC822"]).items():
@@ -292,6 +294,11 @@ class ImapProtocol(ProtocolTemplate):
         else:
             self.IMAP.remove_flags(message_id,["SEEN"])
 
+    @error_handler
+    def _get_folder_names(self)->list[str]:
+        all_folder_names = set([folder[2] for folder in self.IMAP.list_folders()])
+        baned_folder_names = set(["[Gmail]","[Gmail]/Entwürfe","[Gmail]/Papierkorb","[Gmail]/Spam"])
+        return list(all_folder_names-baned_folder_names)
 
 
 class ExchangeProtocol(ProtocolTemplate):
