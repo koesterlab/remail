@@ -56,14 +56,17 @@ class ProtocolTemplate(ABC):
     @property
     @abstractmethod
     def logged_in(self) -> bool:
+        """returns true if user is logged in otherwise false"""
         pass
     
     @abstractmethod
     def login(self) -> bool:
+        """logs in user with password and username/email """
         pass
 
     @abstractmethod
     def logout(self) -> bool:
+        """logs out the user"""
         pass
 
     @abstractmethod
@@ -76,16 +79,18 @@ class ProtocolTemplate(ABC):
         pass
 
     @abstractmethod
-    def mark_email(self, uid: str, read: bool) -> bool:
+    def mark_email(self, uid: str, read: bool):
         pass
 
     @abstractmethod
-    def delete_email(self, uid: str) -> bool:
-        """Requierement: User is logged in"""
+    def delete_email(self, message_id: str):
+        """Deletes the email with given message_id"""
         pass
 
     @abstractmethod
     def get_emails(self, date: datetime = None)->list[Email]:
+        """Returns a list of email objects later than the datetime.
+        If no datetime is passed, it returns all emails"""
         pass
 
 class ImapProtocol(ProtocolTemplate):
@@ -105,12 +110,12 @@ class ImapProtocol(ProtocolTemplate):
     def logged_in(self) -> bool:
         return self.user_password is not None and self.user_username is not None
     
-    def login(self) -> bool:
+    def login(self):
         if self.logged_in: 
-            return True
+            return
         try:
-            self.user_username = "thatchmilo35@gmail.com"
-            self.user_password = keyring.get_password("remail/IMAP","thatchmilo35@gmail.com")
+            self.user_username = ch.get_email()
+            self.user_password = ch.get_password()
             self.IMAP.login(self.user_username, self.user_password)
         except LoginError:
             raise ee.InvalidLoginData() from None
