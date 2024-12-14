@@ -193,7 +193,7 @@ class ImapProtocol(ProtocolTemplate):
                     self.IMAP.delete_messages(messages_ids)
                     self.IMAP.expunge()
                 else:
-                    self.IMAP.move(messages_ids,"Trash")
+                    self.IMAP.move(messages_ids, "[Gmail]/Papierkorb")
     @error_handler
     def get_emails(self, date : datetime = None)->list[Email]:
         if not self.logged_in: 
