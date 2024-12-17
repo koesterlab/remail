@@ -7,7 +7,7 @@ import email
 from imapclient.exceptions import LoginError,IMAPClientAbortError,IMAPClientError,CapabilityError
 from email.message import EmailMessage
 from datetime import datetime
-from exchangelib import Credentials, Account, Message, FileAttachment, EWSDateTime, UTC, errors as exch_errors, FolderCollection
+from exchangelib import Credentials, Account, Message, FileAttachment, errors as exch_errors, FolderCollection
 import os
 from bs4 import BeautifulSoup
 import mimetypes
