@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+import logging
 from remail.database_api.models import Email, EmailReception, Attachment, Contact, RecipientKind
 from imapclient import IMAPClient
 from smtplib import SMTP_SSL,SMTP_SSL_PORT, SMTPAuthenticationError,SMTPRecipientsRefused,SMTPServerDisconnected,SMTPDataError,SMTPConnectError,SMTPHeloError
@@ -438,10 +439,15 @@ class ExchangeProtocol(ProtocolTemplate):
         parsed_datetime = datetime.fromisoformat(ews_datetime_str.ewsformat())
 
         soup = BeautifulSoup(item.body,"html.parser")
-        if (bool(soup.find())):
-            body = soup.get_text()
-            html = [item.body]
-        else:
+        try:
+            if (bool(soup.find())):
+                body = soup.get_text()
+                html = [item.body]
+            else:
+                body = item.body
+                html = []
+        except Exception as e:
+            logging.warning(f"Failed to parse HTML content: {e}")
             body = item.body
             html = []
 
