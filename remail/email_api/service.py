@@ -17,6 +17,7 @@ from email.header import decode_header
 from email.utils import parsedate_to_datetime
 from tzlocal import get_localzone
 import remail.email_api.email_errors as ee
+from pytz import timezone
 
 def error_handler(func):
     
@@ -194,14 +195,14 @@ class ImapProtocol(ProtocolTemplate):
                     self.IMAP.delete_messages(messages_ids)
                     self.IMAP.expunge()
                 else:
-                    self.IMAP.move(messages_ids, "[Gmail]/Papierkorb")
+                    folder_name = self._get_folder_name_with_flags([b"\\Trash"])
+                    self.IMAP.move(messages_ids, folder_name[0])
     @error_handler
     def get_emails(self, date : datetime = None)->list[Email]:
         if not self.logged_in: 
             raise ee.NotLoggedIn()
         listofMails = []
         folder_names = self._get_folder_names()
-        print(folder_names)
         for mailbox in folder_names:
             listofMails += (self._get_emails(mailbox,date))
         return listofMails
@@ -213,12 +214,11 @@ class ImapProtocol(ProtocolTemplate):
             self.IMAP.select_folder(folder)
             if date is not None:
                 messages_ids = self.IMAP.search([u'SINCE', date])
+                date.astimezone(timezone("UTC"))
             else: 
                 messages_ids = self.IMAP.search(["ALL"])
-
             for _,message_data in self.IMAP.fetch(messages_ids,["RFC822"]).items():
                 email_message = email.message_from_bytes(message_data[b"RFC822"])
-
                 if date is not None and date > parsedate_to_datetime(email_message["Date"]): 
                     continue
                 attachments_file_names = []
@@ -268,7 +268,6 @@ class ImapProtocol(ProtocolTemplate):
             raise e
         finally:
             self.IMAP.close_folder()
-        print(folder, len(listofMails))
         return listofMails
 
     @error_handler
@@ -283,7 +282,7 @@ class ImapProtocol(ProtocolTemplate):
             for _,message_data in self.IMAP.fetch(list_messages_ids,["RFC822"]).items():
                 email_message = email.message_from_bytes(message_data[b"RFC822"])
                 listofUIPsIMAP.append(email_message["Message-Id"])
-            self.IMAP.close_folder(mailbox)
+            self.IMAP.close_folder()
         return list(set(message_ids)-set(listofUIPsIMAP))
     
     @error_handler
@@ -297,9 +296,28 @@ class ImapProtocol(ProtocolTemplate):
 
     @error_handler
     def _get_folder_names(self)->list[str]:
-        all_folder_names = set([folder[2] for folder in self.IMAP.list_folders()])
-        baned_folder_names = set(["[Gmail]","[Gmail]/Entwürfe","[Gmail]/Papierkorb","[Gmail]/Spam"])
-        return list(all_folder_names-baned_folder_names)
+        all_folder_names = self.IMAP.list_folders()
+        all_folders_filterd = []
+        baned_flags = (b'\\HasChildren',b'\\Drafts',b'\\Junk',b'\\Noselect',b'\\All')
+        for folder in all_folder_names:
+            if  not(set(folder[0])&set(baned_flags)):
+                all_folders_filterd.append(folder[2])
+        return all_folders_filterd
+    
+    @error_handler
+    def _get_folder_name_with_flags(self,flags:list[bytes],need_of_all_flags:bool = False)->list[str]:
+        all_folder_names = self.IMAP.list_folders()
+        all_folders_filterd = []
+        for folder in all_folder_names:
+            disjunktion = set(folder[0])&set(flags)
+            if disjunktion:
+                if need_of_all_flags:
+                    if len(disjunktion) == len(flags):
+                        all_folders_filterd.append(folder[2])
+                else:
+                    all_folders_filterd.append(folder[2])
+        return all_folders_filterd
+
 
 
 class ExchangeProtocol(ProtocolTemplate):
