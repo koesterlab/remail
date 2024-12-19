@@ -214,7 +214,7 @@ class ImapProtocol(ProtocolTemplate):
             self.IMAP.select_folder(folder)
             if date is not None:
                 messages_ids = self.IMAP.search([u'SINCE', date])
-                date.astimezone(timezone("UTC"))
+                date = date.astimezone(timezone("UTC"))
             else: 
                 messages_ids = self.IMAP.search(["ALL"])
             for _,message_data in self.IMAP.fetch(messages_ids,["RFC822"]).items():
