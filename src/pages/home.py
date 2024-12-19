@@ -1,17 +1,16 @@
 import streamlit as st
-import gettext
-_ = gettext.gettext
-ngettext = gettext.ngettext
+import time
+import random
+import mimetypes  # Für die korrekte Erkennung von MIME-Types
 
 
-# Example data
+# Beispiel-Daten
 emails_data = {
     "sender1@example.com": [
         {"type": "sent", "message": "Hello! How are you?"},
         {"type": "received", "message": "I'm good, thanks! How about you?"},
         {"type": "sent", "message": "Doing great, thanks for asking!"},
     ],
-
     "sender2@example.com": [
         {"type": "received", "message": "Don't forget our meeting tomorrow."},
         {"type": "sent", "message": "Thanks for the reminder! I'll be there."},
@@ -21,179 +20,242 @@ emails_data = {
     ],
 }
 
-# Setting page layout - must be the first command
+
+# Initialisiere Session-States 
+if "selected_sender" not in st.session_state:
+    st.session_state.selected_sender = None
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = {}
+if "new_message" not in st.session_state:
+    st.session_state.new_message = ""
+if "ai_chat_history" not in st.session_state:
+    st.session_state.ai_chat_history = []
+if "ai_user_message" not in st.session_state:
+    st.session_state.ai_user_message = ""
+if "contacts" not in st.session_state:
+    st.session_state.contacts = {}
+
 st.set_page_config(page_title="Remail", layout="wide")
 
-# Sidebar (Left side)
-with st.sidebar:
-    st.header("Emails")
-
-    if st.button("Add Email"):
-        st.session_state.show_add_email_form = True
-    if st.button("New Contact"):
-        st.session_state.show_new_contact_form = True
-
-
-# "Add Email" form
+#New Mail
 def add_email_form():
     st.subheader("Compose New Email")
-    recipient = st.text_input("To:")
-    cc = st.text_input("Cc:")
-    bcc = st.text_input("Bcc:")
-    subject = st.text_input("Subject:")
-    body = st.text_area("Message:")
+    recipient = st.text_input("To:", key="recipient_input") 
+    cc = st.text_input("Cc:", key="cc_input")
+    bcc = st.text_input("Bcc:", key="bcc_input")
+    subject = st.text_input("Subject:", key="subject_input")
+    body = st.text_area("Message:", key="body_input")
 
-    col1, col2 = st.columns(2)
+    col1, col2 = st.columns([1, 1])
     with col1:
-        if st.button("Send Email"):
+        if st.button("Send Email", key="send_email_button"):
             if recipient and subject and body:
-                if recipient not in emails_data:
-                    emails_data[recipient] = []
-                emails_data[recipient].append({"type": "sent", "message": body})
+                emails_data.setdefault(recipient, []).append({"type": "sent", "message": body})
                 st.success("Email sent successfully!")
-                st.session_state.show_add_email_form = False
+                st.session_state["email_sent"] = True  
             else:
                 st.error("Please fill out all required fields.")
     with col2:
-        if st.button("Cancel"):
-            st.session_state.show_add_email_form = False
+        if st.button("Cancel", key="cancel_email_button"):
+            st.session_state["cancel_email"] = True
 
-# "New Contact" form
+if "email_sent" in st.session_state and st.session_state.pop("email_sent"):  # Rerun-Trigger
+    st.rerun()
+
+if "cancel_email" in st.session_state and st.session_state.pop("cancel_email"):
+    st.rerun() 
+
+
+# "New Contact" 
 def new_contact_form():
     st.subheader("Add new contact")
-    contactName = st.text_input("Name:")
-    emailAdress = st.text_input("E-Mail adress:")
-    
+    contact_name = st.text_input("Name:", key="contact_name_input") 
+    contact_surname = st.text_input("Surname:", key="contact_surname_input") 
+    email_address = st.text_input("E-Mail address:", key="email_address_input")
 
-    col01, col02 = st.columns(2)
-    with col01:
-        if st.button("Create new contact"):
-            st.success("Created contact")
+    col1, col2 = st.columns([1, 1])
+    with col1:
+        if st.button("Create new contact", key="create_contact_button"): 
+            if contact_name and contact_surname and email_address:
+                st.session_state.contacts[email_address] = contact_name
+                st.success(f"Created contact {contact_name,contact_surname} with email {email_address}")
+                st.rerun() 
+            else:
+                st.error("Please fill out all required fields.")
+    with col2:
+        if st.button("Cancel", key="cancel_contact_button"): #Eindeutige Keys
+            st.rerun() 
 
-    with col02:
-        if st.button("Cancel"):
-            st.session_state.show_new_contact_form = False
+def send_message_to_sender(sender, message):
+    st.session_state.chat_history.setdefault(sender, []).append({"type": "sent", "message": message})
+    st.success("Message sent successfully!")
 
+# Layout
 empty_col1, col1, empty_col2, col2, empty_col3, col3, empty_col4 = st.columns([0.5, 1, 1, 2, 1, 3, 0.5])
 
-# Main Content
-if st.session_state.get("show_add_email_form", False):
-    add_email_form()
-elif st.session_state.get("show_new_contact_form", False):
-    new_contact_form()
-else:
+with st.sidebar:
+    st.header("Emails")
+    with st.expander("Add Email"):
+        add_email_form()
+
+    st.header("Contacts")
+    with st.expander("New Contact"):
+        new_contact_form()
     
-    # Left column: List senders
-    with col1:
-        st.subheader("Inbox")
-        for sender in emails_data.keys():
-            if st.button(sender):
-                st.session_state.selected_sender = sender
+    for email, name in st.session_state.contacts.items():
+        st.write(f"{name} ({email})")
 
-    # Right column: Chat window
-    with col2:
-        selected_sender = st.session_state.get("selected_sender", None)
+with col1:
+    st.subheader("Inbox")
+    senders = list(emails_data.keys())
+    for sender in senders:
+        if st.button(sender, key=f"sender_button_{sender}"): #Dynamischer Key
+            st.session_state.selected_sender = sender
 
-        if selected_sender:
-            st.subheader(f"Chat with {selected_sender}")
-            chat_history = emails_data.get(selected_sender, [])
 
-            # Display chat messages
-            for chat in chat_history:
-                if chat["type"] == "received":
-                    st.markdown(f"**{selected_sender}:** {chat['message']}")
-                else:
-                    st.markdown(f"**You:** {chat['message']}")
+with col2:
+    selected_sender = st.session_state.get("selected_sender")
 
-            # Input for new chat messages
-            new_message = st.text_input("Type your message:")
-            if st.button("Send"):
-                emails_data[selected_sender].append({"type": "sent", "message": new_message})
-                st.success("Message sent!")
-        else:
-            st.subheader("Select a sender to view chat history.")
+    if selected_sender:
+        st.subheader(f"Chat mit {selected_sender}")
+        chat_history = st.session_state.chat_history.get(selected_sender, [])
 
-    # Initialisiere die Chatnachrichten (falls noch nicht vorhanden)
-    if "chat_history" not in st.session_state:
-        st.session_state.chat_history = []
+        # Initialisiere den Zeitstempel für die letzte Nachricht, falls noch nicht vorhanden
+        if "last_message_time" not in st.session_state:
+            st.session_state.last_message_time = {selected_sender: time.time()}
+        elif selected_sender not in st.session_state.last_message_time:
+            st.session_state.last_message_time[selected_sender] = time.time()
 
-    # Initialize the chat messages (if not already present)
-    if "chat_history" not in st.session_state:
-        st.session_state.chat_history = []
+        # Simuliere das Eintreffen neuer Nachrichten
+        time_diff = time.time() - st.session_state.last_message_time[selected_sender]
+        if time_diff > random.randint(3, 7):  # Zufälliges Intervall zwischen 3 und 7 Sekunden
+            new_message = f"Automatische Nachricht um {time.strftime('%H:%M:%S')}"
+            chat_history.append({"type": "received", "message": new_message})
+            st.session_state.last_message_time[selected_sender] = time.time()
 
-    # Initialize the text for the text field (if not already present)
-    if "user_message" not in st.session_state:
-        st.session_state.user_message = ""
+        # Nachrichten anzeigen
+        for chat in chat_history:
+            sender_display = selected_sender if chat["type"] == "received" else "You"
 
-    with col3:
-        # Graph 
-        st.markdown(
-            """
-            <div style="text-align: center;">
-                <h2>Graph View</h2>
-                <p>This is where the graph could be displayed.</p>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+            # Überprüfe, ob die Nachricht existiert und zeige sie an
+            if "message" in chat:
+                message_display = f"{sender_display}: {chat['message']}"
+                st.markdown(message_display, unsafe_allow_html=True)
 
-        
-        st.write("\n" * 5)  # Spacing
+            # Überprüfe, ob eine Datei angehängt ist und zeige sie an
+            if "file_name" in chat:
+                mime_type, _ = mimetypes.guess_type(chat['file_name'])
+                mime_type = mime_type or "application/octet-stream"
+                
+                st.markdown(f"""
+                    <div style="display: flex; align-items: center; flex-wrap: wrap; width: 100%; word-wrap: break-word; background-color: green;">
+                        <span style="color: white; font-weight: bold;">
+                            {sender_display}:
+                        </span>
+                        
+                    </div>
+                """, unsafe_allow_html=True)
+                
 
-        # Chat with AI
-        st.markdown(
-            """
+                st.download_button(
+                    label=f"Datei herunterladen: {chat['file_name']}",
+                    data=chat["file_content"],
+                    file_name=chat["file_name"],
+                    mime=mime_type
+                )
+
+        # Nachricht und Datei-Eingabe
+        new_message = st.text_area("Nachricht eingeben:", value=st.session_state.new_message, height=100, key=f"new_message_input_chat_{selected_sender}")
+        uploaded_file = st.file_uploader("Datei anhängen", key=f"file_uploader_{selected_sender}")
+
+        if st.button(f"Senden", key=f"send_message_{selected_sender}"):
+            # Sicherstellen, dass entweder eine Nachricht oder eine Datei vorhanden ist
+            if new_message.strip() or uploaded_file:  
+                message_data = {"type": "sent"}
+
+                # Nachricht hinzufügen, falls vorhanden
+                if new_message.strip():
+                    message_data["message"] = new_message
+                    st.session_state.new_message = ""
+
+                # Datei hinzufügen, falls vorhanden
+                if uploaded_file:
+                    message_data["file_name"] = uploaded_file.name
+                    message_data["file_content"] = uploaded_file.getvalue()
+                    st.write(f"Datei '{uploaded_file.name}' wurde angehängt.")
+
+                # Chatverlauf aktualisieren
+                st.session_state.chat_history.setdefault(selected_sender, []).append(message_data)
+                st.rerun()  
+            else:
+                st.error("Bitte gib eine Nachricht ein oder hänge eine Datei an.")
+    else:
+        st.write("Wähle einen Empfänger aus, um den Chatverlauf anzuzeigen.")
+
+
+
+
+
+with col3:
+    #Graph
+    st.markdown(
+        """
+        <div style="text-align: center;">
+            <h2>Graph View</h2>
+            <p>This is where the graph could be displayed.</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.write("\n" * 5)
+
+    # Chat with AI
+    st.markdown(
+        """
             <div style="text-align: center; margin-top:300px">
                 <h2>Chat with AI</h2>
             </div>
             """,
-            unsafe_allow_html=True,
-        )
+        unsafe_allow_html=True,
+    )
 
-        # Input field for message
-        user_message = st.text_area("Type your message to AI:", value=st.session_state.user_message, height=100, key="ai_message")
+    ai_user_message = st.text_area("Type your message to AI:", value=st.session_state.ai_user_message, height=100, key="ai_message")
 
-        #Send button
-        if st.button("Send", key="send_ai"):
-            if user_message.strip():  # If the message is not empty
-                st.session_state.chat_history.append({"sender": "You", "message": user_message})
+    if st.button("Send", key="send_ai_button"): #Eindeutiger Key
+        if ai_user_message.strip():
+            st.session_state.ai_chat_history.append({"sender": "You", "message": ai_user_message})
 
-                ai_reply = f" "  #  insert an actual AI reply
-                st.session_state.chat_history.append({"sender": "AI", "message": ai_reply})
+            ai_reply = f"This is a placeholder AI response to: {ai_user_message}"
+            st.session_state.ai_chat_history.append({"sender": "AI", "message": ai_reply})
 
-                st.session_state.user_message = ""  # The value of the text field should be reset here //// Klappt nicht!!!!
+            st.session_state.ai_user_message = ""
+            st.rerun() 
 
-        # Display the entire chat history
-        for chat in st.session_state.chat_history:
-            if chat["sender"] == "AI":
-                # Display the user's message on the left
-                col1, col2 = st.columns([3, 1])  
-                with col1:
-                    st.markdown(
-                        f"""
-                        <div>
-                            <span style="border: 2px solid green; padding: 2px 5px; border-radius: 5px; color: green; font-weight: bold;">
-                                AI:
-                            </span> 
-                            <span style="padding-left: 10px;">{chat['message']}</span>
-                        </div>
-                        """,
-                        unsafe_allow_html=True,
-                    )
-
-            else:
-                # Display the AI's message on the right
-                col1, col2 = st.columns([1, 3])  
-                with col2:
-                    st.markdown(
-                        f"""
+    for chat in st.session_state.ai_chat_history:
+        if chat["sender"] == "AI":
+            col1, col2 = st.columns([3, 1])
+            with col1:
+                st.markdown(
+                    f"""
+                    <div>
+                        <span style="border: 2px solid green; padding: 2px 5px; border-radius: 5px; color: green; font-weight: bold;">AI:</span>
+                        <span style="padding-left: 10px;">{chat['message']}</span>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+        else:  
+            col1, col2 = st.columns([1, 3])
+            with col2:
+                st.markdown(
+                    f"""
                         <div>
                             <span style="border: 2px solid white; padding: 2px 3px; border-radius: 5px; color: white; font-weight: bold;">
                                 You:
                             </span> 
-                            <span style="padding-left: 10px;">{chat['message']}</span>
+                            <span style="padding-left: 15px;">{chat['message']}</span>
                         </div>
                         """,
                         unsafe_allow_html=True,
                     )
-
