@@ -35,7 +35,7 @@ def wait_for_email(protocol:ProtocolTemplate,dtime:datetime,timeout:int = 30):
     raise TimeoutError()
 
 @contextmanager
-def email_test_context():
+def email_test_context(date: datetime):
     ch.protocol = ch.Protocol.IMAP
     imap = ImapProtocol(ch.get_email(),ch.get_password(),ch.get_host())
     ch.protocol = ch.Protocol.EXCHANGE
@@ -55,29 +55,36 @@ def email_test_context():
 
 def test_mails():
     """testing get_mails with date, delete with msgID,get_deleted_emails"""
-    with email_test_context() as (imap,exchange):
+    date = datetime.now(get_localzone())
+    with email_test_context(date) as (imap,exchange):
         try:
-            date = datetime.now(get_localzone())
-            # senden mit exchange und auslesen mit imap
+            # send
             exchange.send_email(exchange_test_email)
-            test_mail = wait_for_email(imap,date)
-            assert test_mail.subject == "test_exchange_mail"
-            #löschen der Email mit imap
-            imap.delete_email(test_mail.message_id,True)
-            assert len(imap.get_emails(date)) == 0
-            #schauen ob die email deleted ist bei imap
-            message_ids = imap.get_deleted_emails([test_mail.message_id])
-            assert test_mail.message_id == message_ids[0], "Imap deleted Fehler"
-            # senden mit imap und auslesen mit exchange
             imap.send_email(imap_test_email)
+
+            #get the mail
             test_mail_ex = wait_for_email(exchange,date)
+            test_mail_im = wait_for_email(imap,date)
+
+            #compare subjects
             assert test_mail_ex.subject == "test_imap_mail"
-            #löschen der Email mit exchange
+            assert test_mail_im.subject == "test_exchange_mail"
+
+            #delete mail
             exchange.delete_email(test_mail_ex.message_id,True)
+            imap.delete_email(test_mail_im.message_id,True)
+
+            #compare for deletete mail exists
             assert len(exchange.get_emails(date)) == 0
-            #schauen ob die email deleted ist exchange
-            message_ids = exchange.get_deleted_emails([test_mail_ex.message_id])
-            assert test_mail_ex.message_id == message_ids[0], "Exchange deleted Fehler"
+            assert len(imap.get_emails(date)) == 0
+
+            #get deleted mails
+            message_ids_ex = exchange.get_deleted_emails([test_mail_ex.message_id])
+            message_ids_im = imap.get_deleted_emails([test_mail_im.message_id])
+
+            #compare deleted with mail
+            assert test_mail_ex.message_id == message_ids_ex[0], "Exchange deleted Fehler"
+            assert test_mail_im.message_id == message_ids_im[0], "Imap deleted Fehler"
         except Exception as e:
             raise e
 
