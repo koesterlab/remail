@@ -29,7 +29,9 @@ def wait_for_email(protocol:ProtocolTemplate,dtime:datetime,timeout:int = 30):
     start_time = time.time()
     while time.time() - start_time < timeout:
         emails = protocol.get_emails(dtime)
+        if emails != []:
             return emails[0]
+        time.sleep(0.05)
     raise TimeoutError()
 
 @contextmanager
