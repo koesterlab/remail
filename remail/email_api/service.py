@@ -15,7 +15,6 @@ from werkzeug.utils import secure_filename
 import tempfile
 from email.header import decode_header
 from email.utils import parsedate_to_datetime
-from tzlocal import get_localzone
 import remail.email_api.email_errors as ee
 from pytz import timezone
 
@@ -33,17 +32,17 @@ def error_handler(func):
             raise e
         except ValueError as e:
             if "is not an email address" in str(e):
-                raise ee.InvalidLoginData() from None
+                raise ee.InvalidLoginData()
             else:
                 raise ee.UnknownError(f"An unexpected error occurred: {str(e)}") from e
         except INVALIDLOGINDATA:
-            raise ee.InvalidLoginData() from None
+            raise ee.InvalidLoginData()
         except CONNECTIONFAIL:
             raise ee.ServerConnectionFail()
         except SMTPDataError:
-            raise ee.SMTPDataFalse() from None
+            raise ee.SMTPDataFalse()
         except RECIPIENTSFAIL:
-            raise ee.RecipientsFail() from None
+            raise ee.RecipientsFail()
         except Exception as e:
             raise ee.UnknownError(f"An unexpected error occurred: {str(e)}") from e
     return wrapper
@@ -186,15 +185,19 @@ class ImapProtocol(ProtocolTemplate):
     def delete_email(self, message_id:str, hard_delete: bool):
         if not self.logged_in: 
             raise ee.NotLoggedIn()
+        #gets all accessable folder names from the connection
         folder_names = self._get_folder_names()
         for mailbox in folder_names:
+            #searches through all folders for the message_id
             self.IMAP.select_folder(mailbox)
             messages_ids = self.IMAP.search(['HEADER', 'Message-ID', message_id])
             if messages_ids:
                 if hard_delete:
+                    #deletes the email completely
                     self.IMAP.delete_messages(messages_ids)
                     self.IMAP.expunge()
                 else:
+                    #only moves email to Trash folder
                     folder_name = self._get_folder_name_with_flags([b"\\Trash"])
                     self.IMAP.move(messages_ids, folder_name[0])
     @error_handler
@@ -204,6 +207,7 @@ class ImapProtocol(ProtocolTemplate):
         listofMails = []
         folder_names = self._get_folder_names()
         for mailbox in folder_names:
+            #goes through all email folders and sums its content
             listofMails += (self._get_emails(mailbox,date))
         return listofMails
     
@@ -213,9 +217,11 @@ class ImapProtocol(ProtocolTemplate):
         try:
             self.IMAP.select_folder(folder)
             if date is not None:
+                #if date time is given filter all emails after this date
                 messages_ids = self.IMAP.search([u'SINCE', date])
                 date = date.astimezone(timezone("UTC"))
             else: 
+                #no date time given: return all emails
                 messages_ids = self.IMAP.search(["ALL"])
             for _,message_data in self.IMAP.fetch(messages_ids,["RFC822"]).items():
                 email_message = email.message_from_bytes(message_data[b"RFC822"])
@@ -277,12 +283,15 @@ class ImapProtocol(ProtocolTemplate):
         listofUIPsIMAP = []
         folder_names = self._get_folder_names()
         for mailbox in folder_names:
+            #iterates over all available folders
             self.IMAP.select_folder(mailbox)
             list_messages_ids = self.IMAP.search(["ALL"])
+            #gets all message ids from the connection
             for _,message_data in self.IMAP.fetch(list_messages_ids,["RFC822"]).items():
                 email_message = email.message_from_bytes(message_data[b"RFC822"])
                 listofUIPsIMAP.append(email_message["Message-Id"])
             self.IMAP.close_folder()
+        #given ids without the ids, that are currently on the connection
         return list(set(message_ids)-set(listofUIPsIMAP))
     
     @error_handler
@@ -290,33 +299,41 @@ class ImapProtocol(ProtocolTemplate):
         if not self.logged_in: 
            raise ee.NotLoggedIn()
         if read:
+            #mark email as seen
             self.IMAP.add_flags(message_id,["SEEN"])
         else:
+            #mark email as unseen
             self.IMAP.remove_flags(message_id,["SEEN"])
 
     @error_handler
     def _get_folder_names(self)->list[str]:
+        """returns a list with all available folder names"""
         all_folder_names = self.IMAP.list_folders()
         all_folders_filterd = []
         baned_flags = (b'\\HasChildren',b'\\Drafts',b'\\Junk',b'\\Noselect',b'\\All',b'\\Trash')
         for folder in all_folder_names:
-            if  not(set(folder[0])&set(baned_flags)):
-                all_folders_filterd.append(folder[2])
-        return all_folders_filterd
+            #adds only valid folders to the result
+            if  not(set(folder[0])&set(banned_flags)):
+                all_folders_filtered.append(folder[2])
+        return all_folders_filtered
     
     @error_handler
     def _get_folder_name_with_flags(self,flags:list[bytes],need_of_all_flags:bool = False)->list[str]:
+        """returns a list with all available folder names including the flags"""
         all_folder_names = self.IMAP.list_folders()
-        all_folders_filterd = []
+        all_folders_filtered = []
         for folder in all_folder_names:
+            #iterates over all folder names in the connection
             disjunktion = set(folder[0])&set(flags)
             if disjunktion:
                 if need_of_all_flags:
+                    #if all flags are required, checks if the folder has all of them: adds it to the result
                     if len(disjunktion) == len(flags):
-                        all_folders_filterd.append(folder[2])
+                        all_folders_filtered.append(folder[2])
                 else:
-                    all_folders_filterd.append(folder[2])
-        return all_folders_filterd
+                    #if all flags aren't required, just adds the folder to the result
+                    all_folders_filtered.append(folder[2])
+        return all_folders_filtered
 
 
 
@@ -353,7 +370,6 @@ class ExchangeProtocol(ProtocolTemplate):
     
     @error_handler
     def send_email(self,email:Email):
-        """Requierment: User is logged in"""
         if not self.logged_in:
             raise ee.NotLoggedIn()
         
@@ -384,8 +400,8 @@ class ExchangeProtocol(ProtocolTemplate):
             
             path = attachement.filename
             if not os.path.exists(path): 
-                continue
-            with open(path,"b+r") as f:
+                continue #jumps to the next attachment if path doesn't exist
+            with open(path,"rb") as f:
                 content = f.read()
                 att = FileAttachment(name = os.path.basename(path), content = content)
                 m.attach(att)
@@ -397,17 +413,16 @@ class ExchangeProtocol(ProtocolTemplate):
         if not self.logged_in:
             raise ee.NotLoggedIn()
         
-        for item in self.acc.inbox.filter(message_id=message_id):
+        for item in self._get_items(message_id=message_id):
             item.is_read = read
             item.save(update_fields = ["is_read"])
 
     @error_handler
     def delete_email(self, message_id:str, hard_delete: bool = False):
-        """moves the email in the trash folder"""
         if not self.logged_in:
             raise ee.NotLoggedIn()
         
-        for item in self.acc.inbox.filter(message_id=message_id):
+        for item in self._get_items(message_id=message_id):
             if hard_delete:
                 item.delete()
             else:
@@ -422,17 +437,20 @@ class ExchangeProtocol(ProtocolTemplate):
 
         return list(set(message_ids) - set(server_uids))
 
-    def _get_items(self, start_date: datetime = None):
+    def _get_items(self, start_date: datetime = None, message_id = ""):
         email_folders = [f for f in self.acc.root.walk() if f.CONTAINER_CLASS == 'IPF.Note' and f not in {self.acc.trash, self.acc.junk, self.acc.drafts}]
         folder_collection = FolderCollection(account=self.acc,folders = email_folders)
-        if start_date:
-            for item in folder_collection.filter(datetime_received__gte = start_date):
-                if isinstance(item, Message):
-                    yield item
+        if start_date and message_id:
+            generator = folder_collection.filter(datetime_received__gte = start_date, message_id = message_id)
+        elif start_date:
+            generator = folder_collection.filter(datetime_received__gte = start_date)
+        elif message_id:
+            generator = folder_collection.filter(message_id = message_id)
         else:
-            for item in folder_collection.all():
-                if isinstance(item, Message):
-                    yield item
+            generator = folder_collection.all()
+        for item in generator:
+            if isinstance(item, Message):
+                yield item
 
     @error_handler
     def get_emails(self, date : datetime = None)->list[Email]:
@@ -441,11 +459,10 @@ class ExchangeProtocol(ProtocolTemplate):
             raise ee.NotLoggedIn()
 
         result = []
-        for item in self._get_items(date):
+        for item in self._get_items(start_date=date):
             result += self._get_email_exchange(item)
         return result
 
-    #Attachments sind leer
     @error_handler
     def _get_email_exchange(self, item):
         attachments = []
@@ -540,11 +557,3 @@ def safe_file(filename:str,content:bytes)->str:
         return filepath
     except Exception as e:
         raise e
-
-
-if __name__ == "__main__":
-    imap = ImapProtocol()
-    imap.login()
-    imap.get_emails(datetime(2024,12,6,19,0,0,tzinfo=get_localzone()))
-    imap.get_emails()
-    imap.logout()
