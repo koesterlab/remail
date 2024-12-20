@@ -6,7 +6,10 @@ from controller import EmailController
 from datetime import datetime
 import duckdb
 import logging
+from sqlalchemy import Column, Integer, String
+from sqlalchemy.ext.declarative import declarative_base
 
+Base = declarative_base()
 
 # Connect to the DuckDB database (will create a file-based database if it doesn't exist)
 conn = duckdb.connect('database.db')
@@ -73,3 +76,10 @@ class Email(SQLModel, table=True):
     attachments: List[Attachment] = Relationship(back_populates="email")
     recipients: List[EmailReception] = Relationship(back_populates="email")
     date: datetime
+
+
+class User(Base):
+    __tablename__ = 'users'
+    id = Column(Integer, primary_key=True)
+    name = Column(String)
+    email = Column(String)
