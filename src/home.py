@@ -45,8 +45,8 @@ st.set_page_config(page_title="Remail", layout="wide")
 def add_email_form():
     st.subheader("Compose New Email")
     recipient = st.text_input("To:", key="recipient_input") 
-    cc = st.text_input("Cc:", key="cc_input")
-    bcc = st.text_input("Bcc:", key="bcc_input")
+    #cc = st.text_input("Cc:", key="cc_input")
+    #bcc = st.text_input("Bcc:", key="bcc_input")
     subject = st.text_input("Subject:", key="subject_input")
     body = st.text_area("Message:", key="body_input")
 
@@ -203,7 +203,7 @@ with col2:
         new_message = st.text_area("Nachricht eingeben:", value=st.session_state.new_message, height=100, key=f"new_message_input_chat_{selected_sender}")
         uploaded_file = st.file_uploader("Datei anhängen", key=f"file_uploader_{selected_sender}")
 
-        if st.button(f"Senden", key=f"send_message_{selected_sender}"):
+        if st.button(f"Senden an {selected_sender}", key=f"send_message_{selected_sender}"):
             # Sicherstellen, dass entweder eine Nachricht oder eine Datei vorhanden ist
             if new_message.strip() or uploaded_file:  
                 message_data = {"type": "sent"}
