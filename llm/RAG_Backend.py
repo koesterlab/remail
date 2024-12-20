@@ -1,6 +1,7 @@
 import chromadb as db
 import hashlib
 import os 
+import requests
 from llama_cpp import Llama
 from llama_index.core import Settings, VectorStoreIndex, SimpleDirectoryReader
 from llama_index.vector_stores.chroma import ChromaVectorStore
@@ -10,12 +11,54 @@ from pathlib import Path
 from llama_index.core.query_engine import RetrySourceQueryEngine, RetrySourceQueryEngine
 from llama_index.core.evaluation import RelevancyEvaluator
 
-class LLM(object):
-    def __init__(self):
-        MODEL_PATH = "./llm/models/Llama-3.2-1B-Instruct-Q8_0.gguf"  # requires model to be downloaded. replace with huggingface link to change
-        EMBEDDING_MODEL_PATH = "BAAI/bge-large-en-v1.5" # replace with huggingface link to change
 
-        # Disable OpenAI usage by explicitly setting LLM to None => Uses integrated MockLLM
+class LLM(object):
+    # for installing the model can be changed to any model later 
+    TARGET_DIR = "./llm/models"
+    MODEL_FILE = "Llama-3.2-1B-Instruct-Q8_0.gguf"
+    MODEL_URL = "https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF/resolve/main/" + MODEL_FILE
+
+    # Folder exists?
+    def ensure_directory_exists(self,directory):
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+
+
+    def download_file(self,url, destination):
+        response = requests.get(url, stream=True)
+        if response.status_code == 200:
+            with open(destination, "wb") as file:
+                for chunk in response.iter_content(chunk_size=8192):
+                    file.write(chunk)
+        else:
+            raise Exception(f"Failed to download file: HTTP {response.status_code}")
+
+
+    def llm_installer(self):
+        # Ensure the target directory exists
+        self.ensure_directory_exists(self.TARGET_DIR)
+        destination_path = os.path.join(self.TARGET_DIR, self.MODEL_FILE)
+
+        # Download the model file
+        print(f"[INFO] Downloading {self.MODEL_FILE} to {destination_path}...")
+        try:
+            self.download_file(self.MODEL_URL, destination_path)
+            print(f"[INFO] Model file installed successfully at {destination_path}.")
+        except Exception as e:
+            print(f"[ERROR] Failed to download the file: {e}")
+
+  
+    def __init__(self):
+        # Look up if a llm already exists
+        destination_path = os.path.join(self.TARGET_DIR, self.MODEL_FILE)
+        if not os.path.exists(destination_path):
+            self.llm_installer()
+
+            
+        MODEL_PATH = "./llm/models/Llama-3.2-1B-Instruct-Q8_0.gguf" 
+        EMBEDDING_MODEL_PATH = "BAAI/bge-large-en-v1.5"
+
+        # Disable OpenAI usage by explicitly! Never remove this
         Settings.llm = None
         Settings.context_window = 8192 # arbitrary number, llama 3.2 can do up to 128k
 
@@ -55,7 +98,6 @@ class LLM(object):
                     vector_store=self._vector_store,
                     storage_context=self._storage_context, 
                     embed_model=Settings.embed_model, 
-                    llm=None  # to disable requirement for OpenAI API key
                 )
             else:
                 index = self._setup_index()
@@ -91,7 +133,6 @@ class LLM(object):
                 documents, 
                 storage_context=self._storage_context, 
                 embed_model=Settings.embed_model, 
-                llm=None  # to disable requirement for OpenAI API key
             )
             print("index created!")
             
