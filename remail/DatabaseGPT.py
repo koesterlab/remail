@@ -12,16 +12,18 @@ conn.execute('''
         subject VARCHAR,           -- Subject of the email
         body TEXT,                 -- Body content of the email
         timestamp TIMESTAMP DEFAULT NOW(),  -- Time the email was sent
+        urgency INTEGER NOT NULL   -- AI generated importance
         attachment BLOB            -- Attachment data, could be a file in binary format
+        
+
     );
 ''')
 
-# importance INTEGER NOT NULL -- AI generated importance
 
-def insert_email(sender, recipient, subject, body, attachment=None):
+def insert_email(sender, recipient, subject, body, urgency, attachment=None):
     conn = duckdb.connect('email_database.db')
     conn.execute('''
-        INSERT INTO emails (sender, recipient, subject, body, attachment)
+        INSERT INTO emails (sender, recipient, subject, body, attachment, urgency)
         VALUES (?, ?, ?, ?, ?);
     ''', (sender, recipient, subject, body, attachment))
     conn.commit()
@@ -33,8 +35,6 @@ def get_emails_by_sender(sender):
     conn.close()
     return result
 
-emails_from_john = get_emails_by_sender('john.doe@example.com')
-print(emails_from_john)
 
 def get_emails_by_date(start_date, end_date):
     conn = duckdb.connect('email_database.db')
@@ -47,8 +47,11 @@ def get_emails_by_date(start_date, end_date):
     return result
 
 
-#emails_in_range = get_emails_by_date('2024-01-01', '2024-12-31')
-#print(emails_in_range)
+def get_emails_by_sender(urgency):
+    conn = duckdb.connect('email_database.db')
+    result = conn.execute("SELECT * FROM emails WHERE urgency = ?;", (urgency,)).fetchall()
+    conn.close()
+    return result
 
 
 def update_email_subject(email_id, new_subject):
@@ -65,17 +68,6 @@ def delete_email(email_id):
     conn.close()
 
 
-# Insert a few emails
-#insert_email('77','john.doe@example.com', 'jane.smith@example.com', 'Meeting Reminder', 'Dont forget about the meeting!')
-#insert_email('3','alice@example.com', 'bob@example.com', 'Work Update', 'Here is the latest work progress.')
-
-# Fetch emails sent by 'john.doe@example.com'
-emails_from_john = get_emails_by_sender('john.doe@example.com')
-print(emails_from_john)
-
-
-# Insert a sample email into the 'emails' table
-#conn.execute("INSERT INTO emails (id,sender, recipient, subject, body) VALUES ('12345','john.doe@example.com', 'jane.smith@example.com', 'Meeting Update', 'The meeting is at 10 AM tomorrow.')")
 
 # Commit the changes
 conn.commit()
