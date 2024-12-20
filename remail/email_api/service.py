@@ -540,11 +540,3 @@ def safe_file(filename:str,content:bytes)->str:
         return filepath
     except Exception as e:
         raise e
-
-
-if __name__ == "__main__":
-    imap = ImapProtocol()
-    imap.login()
-    imap.get_emails(datetime(2024,12,6,19,0,0,tzinfo=get_localzone()))
-    imap.get_emails()
-    imap.logout()

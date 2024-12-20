@@ -12,7 +12,6 @@ imap_test_email = Email(
         subject="test_imap_mail",
         body="Test!!",
         recipients=[EmailReception(contact=(Contact(email_address ="praxisprojekt-remail@uni-due.de")), kind=RecipientKind.to)],
-        #attachments=[Attachment(filename=r"C:\Users\toadb\Documents\ReinventingEmail\test.txt")]
     )
 
 exchange_test_email = Email(
@@ -20,7 +19,6 @@ exchange_test_email = Email(
         subject="test_exchange_mail",
         body="Test!!",
         recipients=[EmailReception(contact=(Contact(email_address ="thatchmilo35@gmail.com")), kind=RecipientKind.to)],
-        #attachments=[Attachment(filename=r"C:\Users\toadb\Documents\ReinventingEmail\test.txt")]
     )
 
 
