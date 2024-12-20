@@ -185,15 +185,19 @@ class ImapProtocol(ProtocolTemplate):
     def delete_email(self, message_id:str, hard_delete: bool):
         if not self.logged_in: 
             raise ee.NotLoggedIn()
+        #gets all accessable folder names from the connection
         folder_names = self._get_folder_names()
         for mailbox in folder_names:
+            #searches through all folders for the message_id
             self.IMAP.select_folder(mailbox)
             messages_ids = self.IMAP.search(['HEADER', 'Message-ID', message_id])
             if messages_ids:
                 if hard_delete:
+                    #deletes the email completely
                     self.IMAP.delete_messages(messages_ids)
                     self.IMAP.expunge()
                 else:
+                    #only moves email to Trash folder
                     folder_name = self._get_folder_name_with_flags([b"\\Trash"])
                     self.IMAP.move(messages_ids, folder_name[0])
     @error_handler
@@ -203,6 +207,7 @@ class ImapProtocol(ProtocolTemplate):
         listofMails = []
         folder_names = self._get_folder_names()
         for mailbox in folder_names:
+            #goes through all email folders and sums its content
             listofMails += (self._get_emails(mailbox,date))
         return listofMails
     
@@ -212,9 +217,11 @@ class ImapProtocol(ProtocolTemplate):
         try:
             self.IMAP.select_folder(folder)
             if date is not None:
+                #if date time is given filter all emails after this date
                 messages_ids = self.IMAP.search([u'SINCE', date])
                 date = date.astimezone(timezone("UTC"))
             else: 
+                #no date time given: return all emails
                 messages_ids = self.IMAP.search(["ALL"])
             for _,message_data in self.IMAP.fetch(messages_ids,["RFC822"]).items():
                 email_message = email.message_from_bytes(message_data[b"RFC822"])
@@ -276,12 +283,15 @@ class ImapProtocol(ProtocolTemplate):
         listofUIPsIMAP = []
         folder_names = self._get_folder_names()
         for mailbox in folder_names:
+            #iterates over all available folders
             self.IMAP.select_folder(mailbox)
             list_messages_ids = self.IMAP.search(["ALL"])
+            #gets all message ids from the connection
             for _,message_data in self.IMAP.fetch(list_messages_ids,["RFC822"]).items():
                 email_message = email.message_from_bytes(message_data[b"RFC822"])
                 listofUIPsIMAP.append(email_message["Message-Id"])
             self.IMAP.close_folder()
+        #given ids without the ids, that are currently on the connection
         return list(set(message_ids)-set(listofUIPsIMAP))
     
     @error_handler
@@ -289,33 +299,41 @@ class ImapProtocol(ProtocolTemplate):
         if not self.logged_in: 
            raise ee.NotLoggedIn()
         if read:
+            #mark email as seen
             self.IMAP.add_flags(message_id,["SEEN"])
         else:
+            #mark email as unseen
             self.IMAP.remove_flags(message_id,["SEEN"])
 
     @error_handler
     def _get_folder_names(self)->list[str]:
+        """returns a list with all available folder names"""
         all_folder_names = self.IMAP.list_folders()
-        all_folders_filterd = []
-        baned_flags = (b'\\HasChildren',b'\\Drafts',b'\\Junk',b'\\Noselect',b'\\All')
+        all_folders_filtered = []
+        banned_flags = (b'\\HasChildren',b'\\Drafts',b'\\Junk',b'\\Noselect',b'\\All')
         for folder in all_folder_names:
-            if  not(set(folder[0])&set(baned_flags)):
-                all_folders_filterd.append(folder[2])
-        return all_folders_filterd
+            #adds only valid folders to the result
+            if  not(set(folder[0])&set(banned_flags)):
+                all_folders_filtered.append(folder[2])
+        return all_folders_filtered
     
     @error_handler
     def _get_folder_name_with_flags(self,flags:list[bytes],need_of_all_flags:bool = False)->list[str]:
+        """returns a list with all available folder names including the flags"""
         all_folder_names = self.IMAP.list_folders()
-        all_folders_filterd = []
+        all_folders_filtered = []
         for folder in all_folder_names:
+            #iterates over all folder names in the connection
             disjunktion = set(folder[0])&set(flags)
             if disjunktion:
                 if need_of_all_flags:
+                    #if all flags are required, checks if the folder has all of them: adds it to the result
                     if len(disjunktion) == len(flags):
-                        all_folders_filterd.append(folder[2])
+                        all_folders_filtered.append(folder[2])
                 else:
-                    all_folders_filterd.append(folder[2])
-        return all_folders_filterd
+                    #if all flags aren't required, just adds the folder to the result
+                    all_folders_filtered.append(folder[2])
+        return all_folders_filtered
 
 
 
