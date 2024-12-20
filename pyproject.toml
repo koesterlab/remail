@@ -19,6 +19,9 @@ imapclient = "^3.0.1"
 [tool.poetry.group.dev.dependencies]
 ruff = "0.8.4"
 
+[tool.poetry.scripts]
+my-script = "remail.frontend:start"
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
