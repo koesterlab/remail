@@ -4,6 +4,7 @@ import sqlalchemy
 from sqlmodel import Field, SQLModel, Relationship
 from datetime import datetime
 
+
 def id_field(table_name: str):
     sequence = sqlalchemy.Sequence(f"{table_name}_id_seq")
     return Field(
