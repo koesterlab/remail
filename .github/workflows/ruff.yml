@@ -8,4 +8,4 @@ jobs:
       - uses: astral-sh/ruff-action@v2
         with:
           args: "format --check"
-      - run: ruff format
+      - run: ruff check
