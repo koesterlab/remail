@@ -76,6 +76,7 @@ class Email(SQLModel, table=True):
     attachments: List[Attachment] = Relationship(back_populates="email")
     recipients: List[EmailReception] = Relationship(back_populates="email")
     date: datetime
+    urgency: int 
 
 
 class User(Base):
