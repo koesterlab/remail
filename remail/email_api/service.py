@@ -403,7 +403,6 @@ class ExchangeProtocol(ProtocolTemplate):
 
     @error_handler
     def delete_email(self, message_id:str, hard_delete: bool = False):
-        """moves the email in the trash folder"""
         if not self.logged_in:
             raise ee.NotLoggedIn()
         
@@ -445,7 +444,6 @@ class ExchangeProtocol(ProtocolTemplate):
             result += self._get_email_exchange(item)
         return result
 
-    #Attachments sind leer
     @error_handler
     def _get_email_exchange(self, item):
         attachments = []
