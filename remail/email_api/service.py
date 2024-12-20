@@ -32,17 +32,17 @@ def error_handler(func):
             raise e
         except ValueError as e:
             if "is not an email address" in str(e):
-                raise ee.InvalidLoginData() from None
+                raise ee.InvalidLoginData()
             else:
                 raise ee.UnknownError(f"An unexpected error occurred: {str(e)}") from e
         except INVALIDLOGINDATA:
-            raise ee.InvalidLoginData() from None
+            raise ee.InvalidLoginData()
         except CONNECTIONFAIL:
             raise ee.ServerConnectionFail()
         except SMTPDataError:
-            raise ee.SMTPDataFalse() from None
+            raise ee.SMTPDataFalse()
         except RECIPIENTSFAIL:
-            raise ee.RecipientsFail() from None
+            raise ee.RecipientsFail()
         except Exception as e:
             raise ee.UnknownError(f"An unexpected error occurred: {str(e)}") from e
     return wrapper
@@ -370,7 +370,6 @@ class ExchangeProtocol(ProtocolTemplate):
     
     @error_handler
     def send_email(self,email:Email):
-        """Requierment: User is logged in"""
         if not self.logged_in:
             raise ee.NotLoggedIn()
         
@@ -401,8 +400,8 @@ class ExchangeProtocol(ProtocolTemplate):
             
             path = attachement.filename
             if not os.path.exists(path): 
-                continue
-            with open(path,"b+r") as f:
+                continue #jumps to the next attachment if path doesn't exist
+            with open(path,"rb") as f:
                 content = f.read()
                 att = FileAttachment(name = os.path.basename(path), content = content)
                 m.attach(att)
@@ -414,7 +413,7 @@ class ExchangeProtocol(ProtocolTemplate):
         if not self.logged_in:
             raise ee.NotLoggedIn()
         
-        for item in self.acc.inbox.filter(message_id=message_id):
+        for item in self._get_items(message_id=message_id):
             item.is_read = read
             item.save(update_fields = ["is_read"])
 
@@ -423,7 +422,7 @@ class ExchangeProtocol(ProtocolTemplate):
         if not self.logged_in:
             raise ee.NotLoggedIn()
         
-        for item in self.acc.inbox.filter(message_id=message_id):
+        for item in self._get_items(message_id=message_id):
             if hard_delete:
                 item.delete()
             else:
@@ -438,17 +437,20 @@ class ExchangeProtocol(ProtocolTemplate):
 
         return list(set(message_ids) - set(server_uids))
 
-    def _get_items(self, start_date: datetime = None):
+    def _get_items(self, start_date: datetime = None, message_id = ""):
         email_folders = [f for f in self.acc.root.walk() if f.CONTAINER_CLASS == 'IPF.Note' and f not in {self.acc.trash, self.acc.junk, self.acc.drafts}]
         folder_collection = FolderCollection(account=self.acc,folders = email_folders)
-        if start_date:
-            for item in folder_collection.filter(datetime_received__gte = start_date):
-                if isinstance(item, Message):
-                    yield item
+        if start_date and message_id:
+            generator = folder_collection.filter(datetime_received__gte = start_date, message_id = message_id)
+        elif start_date:
+            generator = folder_collection.filter(datetime_received__gte = start_date)
+        elif message_id:
+            generator = folder_collection.filter(message_id = message_id)
         else:
-            for item in folder_collection.all():
-                if isinstance(item, Message):
-                    yield item
+            generator = folder_collection.all()
+        for item in generator:
+            if isinstance(item, Message):
+                yield item
 
     @error_handler
     def get_emails(self, date : datetime = None)->list[Email]:
@@ -457,7 +459,7 @@ class ExchangeProtocol(ProtocolTemplate):
             raise ee.NotLoggedIn()
 
         result = []
-        for item in self._get_items(date):
+        for item in self._get_items(start_date=date):
             result += self._get_email_exchange(item)
         return result
 
