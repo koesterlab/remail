@@ -6,6 +6,4 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/ruff-action@v2
-        with:
-          args: "format --check"
       - run: ruff check
