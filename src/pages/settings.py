@@ -11,8 +11,7 @@ notifications = st.checkbox("Enable Notifications")
 
 st.subheader("Privacy")
 data_sharing = st.radio(
-    "Allow data sharing:",
-    ("Allow all", "Allow essential only", "Do not allow")
+    "Allow data sharing:", ("Allow all", "Allow essential only", "Do not allow")
 )
 
 st.subheader("Appearance")
