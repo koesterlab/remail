@@ -32,17 +32,17 @@ def error_handler(func):
             raise e
         except ValueError as e:
             if "is not an email address" in str(e):
-                raise ee.InvalidLoginData() from None
+                raise ee.InvalidLoginData()
             else:
                 raise ee.UnknownError(f"An unexpected error occurred: {str(e)}") from e
         except INVALIDLOGINDATA:
-            raise ee.InvalidLoginData() from None
+            raise ee.InvalidLoginData()
         except CONNECTIONFAIL:
             raise ee.ServerConnectionFail()
         except SMTPDataError:
-            raise ee.SMTPDataFalse() from None
+            raise ee.SMTPDataFalse()
         except RECIPIENTSFAIL:
-            raise ee.RecipientsFail() from None
+            raise ee.RecipientsFail()
         except Exception as e:
             raise ee.UnknownError(f"An unexpected error occurred: {str(e)}") from e
     return wrapper
@@ -383,7 +383,7 @@ class ExchangeProtocol(ProtocolTemplate):
             path = attachement.filename
             if not os.path.exists(path): 
                 continue #jumps to the next attachment if path doesn't exist
-            with open(path,"br") as f:
+            with open(path,"rb") as f:
                 content = f.read()
                 att = FileAttachment(name = os.path.basename(path), content = content)
                 m.attach(att)
