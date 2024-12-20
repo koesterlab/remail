@@ -1,10 +1,7 @@
 from remail.database_api.models import Email, EmailReception,Contact, RecipientKind
-from remail.email_api.service import ImapProtocol,ExchangeProtocol,ProtocolTemplate
+from remail.email_api.service import ImapProtocol,ExchangeProtocol
 import remail.email_api.credentials_helper as ch
-from tzlocal import get_localzone
 from contextlib import contextmanager
-import pytest
-from unittest.mock import MagicMock, patch
 from datetime import datetime
 from email.utils import format_datetime
 from email.message import EmailMessage
