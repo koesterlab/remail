@@ -1,8 +1,56 @@
 from enum import Enum
 from typing import List, Optional
 import sqlalchemy
-from sqlmodel import Field, SQLModel, Relationship
+from sqlmodel import Field, SQLModel, Relationship, create_engine
+from controller import EmailController
 from datetime import datetime
+import duckdb
+import logging
+
+
+# Connect to the DuckDB database (will create a file-based database if it doesn't exist)
+conn = duckdb.connect('database.db')
+
+engine = create_engine("duckdb:///database.db")
+SQLModel.metadata.create_all(engine)
+
+# Controller initialisieren
+email_controller = EmailController(engine)
+
+# Beispiel-Operationen
+# Absender und Empfänger erstellen
+with Session(engine) as session:
+    sender = Contact(name="Alice", email_address="alice@example.com")
+    recipient = Contact(name="Bob", email_address="bob@example.com")
+    session.add(sender)
+    session.add(recipient)
+    session.commit()
+
+# Neue E-Mail erstellen
+email_controller.create_email(
+    sender_email="alice@example.com",
+    recipient_emails=["bob@example.com"],
+    subject="Meeting Update",
+    body="Das Meeting wurde auf 15 Uhr verschoben.",
+)
+
+# E-Mails abrufen
+emails = email_controller.get_emails(sender_email="alice@example.com")
+for email in emails:
+    print(f"Betreff: {email.subject}, Body: {email.body}")
+
+# Betreff aktualisieren
+email_controller.update_email_subject(email_id=1, new_subject="Wichtige Info")
+
+# E-Mail löschen
+email_controller.delete_email(email_id=1)
+
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+logger.info("Datenbank initialisiert")
+
 
 def id_field(table_name: str):
     sequence = sqlalchemy.Sequence(f"{table_name}_id_seq")
