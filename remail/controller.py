@@ -3,6 +3,15 @@ from models import Email, Contact, EmailReception, RecipientKind, Attachment
 from datetime import datetime
 
 
+# Absender und Empfänger erstellen
+with Session(engine) as session:
+    sender = Contact(name="Alice", email_address="alice@example.com")
+    recipient = Contact(name="Bob", email_address="bob@example.com")
+    session.add(sender)
+    session.add(recipient)
+    session.commit()
+
+
 class EmailController:
     def __init__(self, engine):
         self.engine = engine
