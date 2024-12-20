@@ -298,7 +298,7 @@ class ImapProtocol(ProtocolTemplate):
     def _get_folder_names(self)->list[str]:
         all_folder_names = self.IMAP.list_folders()
         all_folders_filterd = []
-        baned_flags = (b'\\HasChildren',b'\\Drafts',b'\\Junk',b'\\Noselect',b'\\All')
+        baned_flags = (b'\\HasChildren',b'\\Drafts',b'\\Junk',b'\\Noselect',b'\\All',b'\\Trash')
         for folder in all_folder_names:
             if  not(set(folder[0])&set(baned_flags)):
                 all_folders_filterd.append(folder[2])
