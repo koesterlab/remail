@@ -100,7 +100,7 @@ class ProtocolTemplate(ABC):
 
 class ImapProtocol(ProtocolTemplate):
     
-    def __init__(self, email:str, password: str, host: str):
+    def __init__(self, email: str, password: str, host: str):
         self.user_username = email
         self.user_password = password
         self.host = host
