@@ -313,9 +313,9 @@ class ImapProtocol(ProtocolTemplate):
         baned_flags = (b'\\HasChildren',b'\\Drafts',b'\\Junk',b'\\Noselect',b'\\All',b'\\Trash')
         for folder in all_folder_names:
             #adds only valid folders to the result
-            if  not(set(folder[0])&set(banned_flags)):
-                all_folders_filtered.append(folder[2])
-        return all_folders_filtered
+            if  not(set(folder[0])&set(baned_flags)):
+                all_folders_filterd.append(folder[2])
+        return all_folders_filterd
     
     @error_handler
     def _get_folder_name_with_flags(self,flags:list[bytes],need_of_all_flags:bool = False)->list[str]:
