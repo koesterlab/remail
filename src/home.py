@@ -7,16 +7,16 @@ import mimetypes  # Für die korrekte Erkennung von MIME-Types
 # Beispiel-Daten
 emails_data = {
     "sender1@example.com": [
-        {"type": "sent", "message": "Hello! How are you?"},
-        {"type": "received", "message": "I'm good, thanks! How about you?"},
-        {"type": "sent", "message": "Doing great, thanks for asking!"},
+        {"type": "sent", "message": "Hello! How are you?", "date": "2024-01-01", "urgency": 2},
+        {"type": "received", "message": "I'm good, thanks! How about you?", "date": "2024-01-02", "urgency": 1},
+        {"type": "sent", "message": "Doing great, thanks for asking!", "date": "2024-01-03", "urgency": 3},
     ],
     "sender2@example.com": [
-        {"type": "received", "message": "Don't forget our meeting tomorrow."},
-        {"type": "sent", "message": "Thanks for the reminder! I'll be there."},
+        {"type": "received", "message": "Don't forget our meeting tomorrow.", "date": "2024-01-01", "urgency": 2},
+        {"type": "sent", "message": "Thanks for the reminder! I'll be there.", "date": "2024-01-02", "urgency": 1},
     ],
     "sender3@example.com": [
-        {"type": "received", "message": "Can you review the attached file?"},
+        {"type": "received", "message": "Can you review the attached file?", "date": "2024-01-01", "urgency": 3},
     ],
 }
 
@@ -34,6 +34,10 @@ if "ai_user_message" not in st.session_state:
     st.session_state.ai_user_message = ""
 if "contacts" not in st.session_state:
     st.session_state.contacts = {}
+if "filter_option" not in st.session_state:
+    st.session_state.filter_option = "None"
+if "search_query" not in st.session_state:
+    st.session_state.search_query = ""
 
 st.set_page_config(page_title="Remail", layout="wide")
 
@@ -107,9 +111,40 @@ with st.sidebar:
 
 with col1:
     st.subheader("Inbox")
+    # Such- und Filterkomponenten
+    st.session_state.filter_option = st.selectbox(
+        "Sort by:",
+        options=["None", "Urgency", "Date"],
+        key="filter_option_selectbox"
+    )
+    st.session_state.search_query = st.text_input(
+        "Search for Sender:",
+        key="search_query_input"
+    )
+
+    # Sender sortieren basierend auf Filter
     senders = list(emails_data.keys())
+    if st.session_state.filter_option == "Urgency":
+        senders = sorted(
+            senders, 
+            key=lambda sender: max((msg.get("urgency", 0) for msg in emails_data[sender]), default=0), 
+            reverse=True
+        )
+    elif st.session_state.filter_option == "Date":
+        senders = sorted(
+            senders, 
+            key=lambda sender: max((msg.get("date", "") for msg in emails_data[sender]), default=""), 
+            reverse=True
+        )
+
+    # Sender filtern basierend auf Suchanfrage
+    search_query = st.session_state.search_query.lower()
+    if search_query:
+        senders = [sender for sender in senders if search_query in sender.lower()]
+
+    # Sender-Liste anzeigen
     for sender in senders:
-        if st.button(sender, key=f"sender_button_{sender}"): #Dynamischer Key
+        if st.button(sender, key=f"sender_button_{sender}"):
             st.session_state.selected_sender = sender
 
 
