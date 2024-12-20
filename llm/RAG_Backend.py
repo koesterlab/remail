@@ -8,7 +8,7 @@ from llama_index.vector_stores.chroma import ChromaVectorStore
 from llama_index.core import StorageContext
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from pathlib import Path
-from llama_index.core.query_engine import RetrySourceQueryEngine, RetrySourceQueryEngine
+from llama_index.core.query_engine import RetrySourceQueryEngine
 from llama_index.core.evaluation import RelevancyEvaluator
 
 
