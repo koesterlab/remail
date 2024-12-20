@@ -15,7 +15,6 @@ from werkzeug.utils import secure_filename
 import tempfile
 from email.header import decode_header
 from email.utils import parsedate_to_datetime
-from tzlocal import get_localzone
 import remail.email_api.email_errors as ee
 from pytz import timezone
 
