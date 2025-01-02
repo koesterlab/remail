@@ -15,6 +15,10 @@ exchangelib = "^5.5.0"
 llama-index = "^0.11.22"
 streamlit = "^1.40.0"
 imapclient = "^3.0.1"
+sqlalchemy = "^2.0.36"
+
+[tool.poetry.group.dev.dependencies]
+ruff = "0.8.4"
 
 [tool.poetry.scripts]
 my-script = "remail.frontend:start"
