@@ -65,9 +65,9 @@ st.markdown(
 
 #text_Input
 
-adress= st.text_input ("Enter your E-Mail adress ","")
+address= st.text_input ("Enter your E-Mail adress ","")
 
-adress2= st.text_input ("Repeat your E-Mail adress ","")
+address2= st.text_input ("Repeat your E-Mail adress ","")
 
 password = st.text_input("Create a password", type="password", help="At least 1 letter and 1 number, no special characters.")
 
