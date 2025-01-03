@@ -48,13 +48,15 @@ class Attachment(SQLModel, table=True):
 
 class Email(SQLModel, table=True):
     id: Optional[int] = id_field("email")
-    sender: Contact = Relationship(back_populates="sent_emails")
+    message_id: str
+    sender_id: int = Field(foreign_key="contact.id")
+    sender: "Contact" = Relationship(back_populates="sent_emails")
     subject: str
     body: str
     attachments: Optional[List[Attachment]] = Relationship(back_populates="email")
     recipients: List[EmailReception] = Relationship(back_populates="email")
     date: datetime
-    urgency: Optional[int] 
+    urgency: Optional[int]
 
 
 class User(SQLModel, table=True):
