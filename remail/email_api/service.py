@@ -552,8 +552,6 @@ class ExchangeProtocol(ProtocolTemplate):
             body = item.body
             html = []
 
-        print(item.sender)
-
         return [
             create_email(
                 uid=item.message_id,
@@ -562,8 +560,14 @@ class ExchangeProtocol(ProtocolTemplate):
                 body=body,
                 attachments=attachments,
                 to_recipients=[i.email_address for i in item.to_recipients],
-                cc_recipients=[item.email_address for item in (item.cc_recipients if item.cc_recipients else [])],
-                bcc_recipients=[item.email_address for item in (item.bcc_recipients if item.bcc_recipients else [])],
+                cc_recipients=[
+                    item.email_address
+                    for item in (item.cc_recipients if item.cc_recipients else [])
+                ],
+                bcc_recipients=[
+                    item.email_address
+                    for item in (item.bcc_recipients if item.bcc_recipients else [])
+                ],
                 date=parsed_datetime,
                 html_files=html,
             )
@@ -593,12 +597,16 @@ def create_email(
     ]
     if cc_recipients:
         recipients += [
-            EmailReception(contact=controller.get_contact(recipient), kind=RecipientKind.cc)
+            EmailReception(
+                contact=controller.get_contact(recipient), kind=RecipientKind.cc
+            )
             for recipient in cc_recipients
         ]
     if bcc_recipients:
         recipients += [
-            EmailReception(contact=controller.get_contact(recipient), kind=RecipientKind.bcc)
+            EmailReception(
+                contact=controller.get_contact(recipient), kind=RecipientKind.bcc
+            )
             for recipient in bcc_recipients
         ]
 
