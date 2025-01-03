@@ -1,5 +1,5 @@
 from sqlmodel import Session, select, create_engine
-from database.models import (
+from remail.database.models import (
     Email,
     Contact,
     EmailReception,
