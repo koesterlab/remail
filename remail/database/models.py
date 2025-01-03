@@ -3,6 +3,9 @@ from typing import List, Optional
 import sqlalchemy
 from sqlmodel import Field, SQLModel, Relationship
 from datetime import datetime
+from sqlalchemy import Column, Integer, String
+from sqlalchemy.ext.declarative import declarative_base
+
 
 
 def id_field(table_name: str):
@@ -19,7 +22,6 @@ class Contact(SQLModel, table=True):
     id: Optional[int] = id_field("contact")
     email_address: str
     name: Optional[str] = None
-
     receptions: List["EmailReception"] = Relationship(back_populates="contact")
     sent_emails: List["Email"] = Relationship(back_populates="sender")
 
@@ -47,11 +49,16 @@ class Attachment(SQLModel, table=True):
 
 class Email(SQLModel, table=True):
     id: Optional[int] = id_field("email")
-    message_id: str
-    sender_id: int = Field(foreign_key="contact.id")
     sender: Contact = Relationship(back_populates="sent_emails")
     subject: str
     body: str
-    attachments: List[Attachment] = Relationship(back_populates="email")
+    attachments: Optional[List[Attachment]] = Relationship(back_populates="email")
     recipients: List[EmailReception] = Relationship(back_populates="email")
     date: datetime
+    urgency: Optional[int] 
+
+
+class User(SQLModel, table=True):
+    id: Optional[int] = id_field("email")
+    name: str
+    email: str
