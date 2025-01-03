@@ -1,5 +1,5 @@
 from sqlmodel import Session, select, create_engine
-from database.models import Email, Contact, EmailReception, RecipientKind, Attachment
+from database.models import Email, Contact, EmailReception, RecipientKind, Attachment, User
 from datetime import datetime
 import duckdb
 import logging

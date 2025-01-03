@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 import logging
-from remail.database_api.models import (
+from remail.database.models import (
     Email,
     EmailReception,
     Attachment,
