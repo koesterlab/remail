@@ -1,10 +1,10 @@
 from abc import ABC, abstractmethod
+from remail.controller import get_contact
 import logging
 from remail.database.models import (
     Email,
     EmailReception,
     Attachment,
-    Contact,
     RecipientKind,
 )
 from imapclient import IMAPClient
@@ -616,10 +616,6 @@ def create_email(
     email.attachments = attachments_class
 
     return email
-
-
-def get_contact(email: str) -> Contact:
-    return Contact(email_address=email)
 
 
 def safe_file(filename: str, content: bytes) -> str:

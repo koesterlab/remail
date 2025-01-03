@@ -7,7 +7,6 @@ from sqlalchemy import Column, Integer, String
 from sqlalchemy.ext.declarative import declarative_base
 
 
-
 def id_field(table_name: str):
     sequence = sqlalchemy.Sequence(f"{table_name}_id_seq")
     return Field(
@@ -55,7 +54,7 @@ class Email(SQLModel, table=True):
     attachments: Optional[List[Attachment]] = Relationship(back_populates="email")
     recipients: List[EmailReception] = Relationship(back_populates="email")
     date: datetime
-    urgency: Optional[int] 
+    urgency: Optional[int]
 
 
 class User(SQLModel, table=True):
