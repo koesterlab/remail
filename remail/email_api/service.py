@@ -552,16 +552,18 @@ class ExchangeProtocol(ProtocolTemplate):
             body = item.body
             html = []
 
+        print(item.sender)
+
         return [
             create_email(
                 uid=item.message_id,
-                sender=item.sender,
+                sender=item.sender.email_address,
                 subject=item.subject,
                 body=body,
                 attachments=attachments,
-                to_recipients=item.to_recipients,
-                cc_recipients=item.cc_recipients if item.cc_recipients else [],
-                bcc_recipients=item.bcc_recipients if item.bcc_recipients else [],
+                to_recipients=[i.email_address for i in item.to_recipients],
+                cc_recipients=[item.email_address for item in (item.cc_recipients if item.cc_recipients else [])],
+                bcc_recipients=[item.email_address for item in (item.bcc_recipients if item.bcc_recipients else [])],
                 date=parsed_datetime,
                 html_files=html,
             )
