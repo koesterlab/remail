@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from remail.controller import get_contact
+from remail.controller import controller
 import logging
 from remail.database.models import (
     Email,
@@ -583,20 +583,20 @@ def create_email(
     date: datetime,
     html_files: list[str] = None,
 ) -> Email:
-    sender_contact = get_contact(sender)
+    sender_contact = controller.get_contact(sender)
 
     recipients = [
-        EmailReception(contact=get_contact(recipient), kind=RecipientKind.to)
+        EmailReception(contact=controller.get_contact(recipient), kind=RecipientKind.to)
         for recipient in to_recipients
     ]
     if cc_recipients:
         recipients += [
-            EmailReception(contact=get_contact(recipient), kind=RecipientKind.cc)
+            EmailReception(contact=controller.get_contact(recipient), kind=RecipientKind.cc)
             for recipient in cc_recipients
         ]
     if bcc_recipients:
         recipients += [
-            EmailReception(contact=get_contact(recipient), kind=RecipientKind.bcc)
+            EmailReception(contact=controller.get_contact(recipient), kind=RecipientKind.bcc)
             for recipient in bcc_recipients
         ]
 
