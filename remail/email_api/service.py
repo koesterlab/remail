@@ -1,6 +1,5 @@
 from abc import ABC, abstractmethod
 from remail.controller import controller
-import logging
 from remail.database.models import (
     Email,
     EmailReception,
@@ -36,7 +35,6 @@ from exchangelib import (
     FolderCollection,
 )
 import os
-from bs4 import BeautifulSoup
 import mimetypes
 from werkzeug.utils import secure_filename
 import tempfile
@@ -539,17 +537,10 @@ class ExchangeProtocol(ProtocolTemplate):
         ews_datetime_str = item.datetime_received.astimezone()
         parsed_datetime = datetime.fromisoformat(ews_datetime_str.ewsformat())
 
-        soup = BeautifulSoup(item.body, "html.parser")
-        try:
-            if bool(soup.find()):
-                body = soup.get_text()
-                html = [item.body]
-            else:
-                body = item.body
-                html = []
-        except Exception as e:
-            logging.warning(f"Failed to parse HTML content: {e}")
-            body = item.body
+        body = item.text_body
+        if item.body != body:
+            html = [item.body]
+        else:
             html = []
 
         return [
