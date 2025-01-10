@@ -1,4 +1,4 @@
-from enum import Enum
+from enum import Enum, auto
 from typing import List, Optional
 import sqlalchemy
 from sqlmodel import Field, SQLModel, Relationship
@@ -58,8 +58,15 @@ class Email(SQLModel, table=True):
     date: datetime
     urgency: Optional[int]
 
+class Protocol(Enum):
+    IMAP = auto()
+    EXCHANGE = auto()
 
 class User(SQLModel, table=True):
     id: Optional[int] = id_field("email")
     name: str
     email: str
+    protocol: Protocol = Field(sa_column=sqlalchemy.Column(sqlalchemy.Enum(Protocol)))
+    extra_information: str
+    """if Exchange: extra_information = username else: extra_information = host"""
+    last_refresh: datetime = None
