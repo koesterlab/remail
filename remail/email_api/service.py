@@ -404,13 +404,14 @@ class ImapProtocol(ProtocolTemplate):
 
 
 class ExchangeProtocol(ProtocolTemplate):
-    def __init__(self, email: str, password: str, username: str):
+    def __init__(self, email: str, password: str, username: str, controller: "Controller"):
         self.cred = None
         self.acc = None
         self._logged_in = False
         self.email = email
         self.password = password
         self.username = username
+        self.controller = controller
 
     @property
     def logged_in(self) -> bool:
@@ -561,6 +562,7 @@ class ExchangeProtocol(ProtocolTemplate):
                     for item in (item.bcc_recipients if item.bcc_recipients else [])
                 ],
                 date=parsed_datetime,
+                controller=self.controller,
                 html_files=html,
             )
         ]
@@ -579,11 +581,9 @@ def create_email(
     cc_recipients: list[str],
     bcc_recipients: list[str],
     date: datetime,
+    controller: "Controller",
     html_files: list[str] = None,
 ) -> Email:
-    
-    
-    from remail.controller import controller
 
     sender_contact = controller.get_contact(sender)
 
