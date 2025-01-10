@@ -14,9 +14,17 @@ from llama_index.core.evaluation import RelevancyEvaluator
 
 class LLM(object):
     # for installing the model can be changed to any model later 
-    TARGET_DIR = "./llm/models"
+    TARGET_DIR = "./remail/llm/models"
     MODEL_FILE = "Llama-3.2-1B-Instruct-Q8_0.gguf"
     MODEL_URL = "https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF/resolve/main/" + MODEL_FILE
+    MODEL_PATH = "./remail/llm/models/Llama-3.2-1B-Instruct-Q8_0.gguf" 
+    EMBEDDING_MODEL_PATH = "BAAI/bge-large-en-v1.5"
+
+    #Directory Configuration
+    _hash_file ="./remail/llm/db/data_hash.txt"
+    _data_folder ="./remail/llm/vectorData"
+    _db_path="./remail/llm/db/chroma_db"
+    _collection_name = "quickstart"
 
     # Folder exists?
     def ensure_directory_exists(self,directory):
@@ -54,25 +62,16 @@ class LLM(object):
         if not os.path.exists(destination_path):
             self.llm_installer()
 
-            
-        MODEL_PATH = "./llm/models/Llama-3.2-1B-Instruct-Q8_0.gguf" 
-        EMBEDDING_MODEL_PATH = "BAAI/bge-large-en-v1.5"
 
         # Disable OpenAI usage by explicitly! Never remove this
         Settings.llm = None
         Settings.context_window = 8192 # arbitrary number, llama 3.2 can do up to 128k
 
         # Llama-cpp Configuration
-        self._llama = Llama(model_path=MODEL_PATH, n_ctx=Settings.context_window, chat_format="llama-3", verbose=False) # disabling verbosity to reduce console logging
+        self._llama = Llama(model_path=self.MODEL_PATH, n_ctx=Settings.context_window, chat_format="llama-3", verbose=False) # disabling verbosity to reduce console logging
 
         # Hugging Face Embedding Model
-        Settings.embed_model = HuggingFaceEmbedding(model_name=EMBEDDING_MODEL_PATH)
-
-        #Directory Configuration
-        self._hash_file ="./llm/db/data_hash.txt"
-        self._data_folder ="./llm/vectorData"
-        self._db_path="./llm/db/chroma_db"
-        self._collection_name = "quickstart"
+        Settings.embed_model = HuggingFaceEmbedding(model_name=self.EMBEDDING_MODEL_PATH)
 
 
         # Initialize ChromaDB client and collection

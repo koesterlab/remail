@@ -1,7 +1,5 @@
 *.log
-/local-embedding-model
-/llm/__pycache__
-/llm/db/chroma_db
-/llm/db
+/remail/llm/models_
+/remail/llm/db
 *.gguf
 __pycache__
