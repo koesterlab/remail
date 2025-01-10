@@ -2,7 +2,17 @@ import streamlit as st
 import time
 import random
 import mimetypes  # Für die korrekte Erkennung von MIME-Types
+import sys
+import os
 
+# Add the Remail directory (parent folder) to sys.path
+remail_path = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+sys.path.append(remail_path)
+
+# Import the RAG_Backend module using the full package path
+from LLM import RAG_Backend as rag
+
+llm = rag.LLM()
 
 # Beispiel-Daten
 emails_data = {
@@ -303,60 +313,34 @@ with col3:
     st.write("\n" * 5)
 
     # Chat with AI
-    st.markdown(
-        """
-            <div style="text-align: center; margin-top:300px">
-                <h2>Chat with AI</h2>
-            </div>
-            """,
-        unsafe_allow_html=True,
-    )
 
-    ai_user_message = st.text_area(
-        "Type your message to AI:",
-        value=st.session_state.ai_user_message,
-        height=100,
-        key="ai_message",
-    )
+    # Initialize Chat History
+    if "messages" not in st.session_state:
+        st.session_state.messages = [
+            {"role": "assistant", "content": "How may I assist you today?"}
+        ]
 
-    if st.button("Send", key="send_ai_button"):  # Eindeutiger Key
-        if ai_user_message.strip():
-            st.session_state.ai_chat_history.append(
-                {"sender": "You", "message": ai_user_message}
-            )
+    # Display Chat Messages
+    for message in st.session_state.messages:
+        with st.chat_message(message["role"]):
+            st.write(message["content"])
 
-            ai_reply = f"This is a placeholder AI response to: {ai_user_message}"
-            st.session_state.ai_chat_history.append(
-                {"sender": "AI", "message": ai_reply}
-            )
+    # User Input and Response Generation
+    if prompt := st.chat_input():
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        with st.chat_message("user"):
+            st.write(prompt)
 
-            st.session_state.ai_user_message = ""
-            st.rerun()
-
-    for chat in st.session_state.ai_chat_history:
-        if chat["sender"] == "AI":
-            col1, col2 = st.columns([3, 1])
-            with col1:
-                st.markdown(
-                    f"""
-                    <div>
-                        <span style="border: 2px solid green; padding: 2px 5px; border-radius: 5px; color: green; font-weight: bold;">AI:</span>
-                        <span style="padding-left: 10px;">{chat['message']}</span>
-                    </div>
-                    """,
-                    unsafe_allow_html=True,
+        with st.chat_message("assistant"), st.spinner("Thinking..."):
+            try:
+                response = llm.prompt(prompt)
+                st.write(response)
+                st.session_state.messages.append(
+                    {"role": "assistant", "content": response}
                 )
-        else:
-            col1, col2 = st.columns([1, 3])
-            with col2:
-                st.markdown(
-                    f"""
-                        <div>
-                            <span style="border: 2px solid white; padding: 2px 3px; border-radius: 5px; color: white; font-weight: bold;">
-                                You:
-                            </span> 
-                            <span style="padding-left: 15px;">{chat['message']}</span>
-                        </div>
-                        """,
-                    unsafe_allow_html=True,
+            except Exception as e:
+                error_message = "I apologize, but I'm having trouble processing your request right now. Please try again later."
+                st.error(error_message)
+                st.session_state.messages.append(
+                    {"role": "assistant", "content": error_message}
                 )
