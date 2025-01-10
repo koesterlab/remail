@@ -586,6 +586,7 @@ def create_email(
 ) -> Email:
 
     sender_contact = controller.get_contact(sender)
+    print(sender_contact)
 
     recipients = [
         EmailReception(contact=controller.get_contact(recipient), kind=RecipientKind.to)

@@ -193,7 +193,7 @@ class EmailController:
         """Speichert die E-Mail Objekte aus dem Email_Api Modul"""
         with Session(self.engine) as session:
             for mail in list_of_mails:
-                session.add(mail)
+                session.merge(mail)
                 session.commit()
     
     def _refresh(self,list_of_protocols: list[ProtocolTemplate,datetime,str]):
@@ -282,6 +282,7 @@ class EmailController:
             contact = Contact(email_address=email_address, name=name)
             session.add(contact)
             session.commit()
+            return contact
             # self.logger.info(f"Kontakt erstellt: {name} ({email_address})")
 
     def get_contacts(self):
