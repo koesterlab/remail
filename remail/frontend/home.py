@@ -331,10 +331,17 @@ with col3:
         with st.chat_message("user"):
             st.write(prompt)
 
-        with st.chat_message("assistant"):
-            with st.spinner("Thinking..."):
+        with st.chat_message("assistant"), st.spinner("Thinking..."):
+            try:
                 response = llm.prompt(prompt)
                 st.write(response)
                 st.session_state.messages.append(
                     {"role": "assistant", "content": response}
+                )
+            except Exception as e:
+                error_message = "I apologize, but I'm having trouble processing your request right now. Please try again later."
+                st.error(error_message)
+                st.session_state.messages.append(
+                    {"role": "assistant", "content": error_message}
+                )
                 )
