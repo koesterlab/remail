@@ -56,10 +56,6 @@ class EmailController:
             accounts = []
             for user in users:
                 password = keyring.get_password("remail/Account", user.email)
-                logging.error(f"Refreshing {user.email}")
-                if not password:
-                    logging.error(f"Password for {user.email} not found")
-                    continue # skip user if password is not available, bald hoffentlich notification
 
                 if user.protocol == Protocol.IMAP:
                     accounts += [(ImapProtocol(email=user.email, host=user.extra_information, password=password), user.last_refresh, user.email)]
