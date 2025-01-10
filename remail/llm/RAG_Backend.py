@@ -157,13 +157,17 @@ class LLM(object):
 
     def _compute_folder_hash(self, folder_path):
         """Compute a hash of all files in the folder to detect changes."""
-        hash_obj = hashlib.md5()
+        hash_obj = hashlib.sha256()
         for root, _, files in os.walk(folder_path):
             for file in sorted(files):  # Sort files to ensure consistent ordering
                 file_path = os.path.join(root, file)
-                with open(file_path, "rb") as f:
-                    while chunk := f.read(8192):  # Read file in chunks
-                        hash_obj.update(chunk)
+                try:
+                    with open(file_path, "rb") as f:
+                        while chunk := f.read(8192):  # Read file in chunks
+                            hash_obj.update(chunk)
+                except IOError as e:
+                    print(f"Warning: Could not read file {file_path}: {str(e)}")
+                    continue
         return hash_obj.hexdigest()
 
     def prompt(self, prompt: str) -> str:
