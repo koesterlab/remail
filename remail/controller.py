@@ -12,7 +12,7 @@ from datetime import datetime
 import duckdb
 import logging
 from sqlmodel import SQLModel
-from remail.email_api.service import ImapProtocol, ExchangeProtocol
+from remail.email_api.service import ImapProtocol, ExchangeProtocol, ProtocolTemplate
 import keyring
 
 class EmailController:
@@ -139,12 +139,29 @@ class EmailController:
                 session.add(mail)
                 session.commit()
     
-    def _refresh(list_of_Protocols: list[PrtocolTemplate,datetime]):
-        
+    def _refresh(self,list_of_protocols: list[ProtocolTemplate,datetime,str]):
+        all_mails_database = []
+        all_message_ids = []
+        all_new_mails = []
+        deleted_mails_id = []
 
+        for protocols in list_of_protocols:
+            with Session(self.engine) as session:
+                all_mails_database += self.get_emails(sender_email=protocols[2])
+                all_mails_database += self.get_emails(recipient_email=protocols[2])
+                all_message_ids = [mail.message_id for mail in all_mails_database]
 
+            protocol = protocols[0]
+            all_new_mails.append(protocol.get_emails(protocols[1]))
+            deleted_mails = set(protocol.get_deleted_emails(all_message_ids))
+            with Session(self.engine) as session:
+                deleted_mails_id += session.exec(select(Email.id).where((Email.sender is protocol[2] or Email.recipients.any(EmailReception.contact.has(email_address=protocol[2]))) and Email.message_id in deleted_mails))
 
-        pass
+        for id in deleted_mails_id:
+                self.delete_email(id)
+                
+        with Session(self.engine) as session:
+            self.safe_email(all_new_mails)
 
 
     def get_emails(self, sender_email=None, recipient_email=None):
