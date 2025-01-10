@@ -136,12 +136,13 @@ class ProtocolTemplate(ABC):
 
 
 class ImapProtocol(ProtocolTemplate):
-    def __init__(self, email: str, password: str, host: str):
+    def __init__(self, email: str, password: str, host: str, controller: "Controller"):
         self.user_username = email
         self.user_password = password
         self.host = host
         self._logged_in = False
         self.IMAP = IMAPClient(self.host, use_uid=True)
+        self.controller = controller
 
     @property
     def logged_in(self) -> bool:
@@ -321,6 +322,7 @@ class ImapProtocol(ProtocolTemplate):
                         cc_recipients=email_message["Cc"],
                         bcc_recipients=email_message["Bcc"],
                         date=parsedate_to_datetime(email_message["Date"]),
+                        controller = self.controller,
                         html_files=html_parts,
                     )
                 ]
