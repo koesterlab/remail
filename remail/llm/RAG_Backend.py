@@ -15,9 +15,9 @@ from llama_index.core.evaluation import RelevancyEvaluator
 class LLM(object):
     # for installing the model can be changed to any model later 
     TARGET_DIR = "./remail/llm/models"
-    MODEL_FILE = "Llama-3.2-1B-Instruct-Q8_0.gguf"
+    MODEL_FILE = "Llama-3.2-1B-Instruct-Q4_K_M.gguf"
     MODEL_URL = "https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF/resolve/main/" + MODEL_FILE
-    MODEL_PATH = "./remail/llm/models/Llama-3.2-1B-Instruct-Q8_0.gguf" 
+    MODEL_PATH = "./remail/llm/models/" + MODEL_FILE
     EMBEDDING_MODEL_PATH = "BAAI/bge-large-en-v1.5"
 
     #Directory Configuration
