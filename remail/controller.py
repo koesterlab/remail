@@ -206,6 +206,7 @@ class EmailController:
         deleted_mails_id = []
 
         for protocol,date,email_address_acc in list_of_protocols:
+            protocol.login()
             with Session(self.engine) as session:
                 all_mails_database += self.get_emails(sender_email=email_address_acc)
                 all_mails_database += self.get_emails(recipient_email=email_address_acc)
@@ -226,12 +227,13 @@ class EmailController:
                             )
                 deleted_mails_id += session.exec(statement_1).all()
                 deleted_mails_id += session.exec(statement_2).all()
-
+            protocol.logout()
         for id in deleted_mails_id:
                 self.delete_email(id)
                 
         with Session(self.engine) as session:
             self.safe_email(all_new_mails)
+        
 
 
     def get_emails(self, sender_email=None, recipient_email=None):
