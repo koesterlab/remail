@@ -48,6 +48,7 @@ class EmailController:
         #
         # logger.info("Datenbank initialisiert")
 
+    @error_handler
     def refresh(self):
         """Aktualisiert alle E-Mails in der Datenbank."""
         with Session(self.engine) as session:
@@ -106,7 +107,7 @@ class EmailController:
             session.commit()
             session.refresh(user)
     
-        
+    @error_handler
     def send_email(
         self,
         id: int,
