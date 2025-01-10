@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-from remail.controller import controller
 from remail.database.models import (
     Email,
     EmailReception,
@@ -580,6 +579,10 @@ def create_email(
     date: datetime,
     html_files: list[str] = None,
 ) -> Email:
+    
+    
+    from remail.controller import controller
+
     sender_contact = controller.get_contact(sender)
 
     recipients = [
