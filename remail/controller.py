@@ -73,7 +73,9 @@ class EmailController:
         self,
         id: int,
         sender_email: str,
-        recipient_emails: list,
+        recipient_emails_to: list,
+        recipient_emails_cc: list,
+        recipient_emails_bcc: list,
         subject: str,
         body: str,
         attachments: list = None,
@@ -89,7 +91,7 @@ class EmailController:
                 raise ValueError("Absender nicht gefunden")
 
             recipients = []
-            for recipient_email in recipient_emails:
+            for recipient_email in recipient_emails_to:
                 contact = session.exec(
                     select(Contact).where(Contact.email_address == recipient_email)
                 ).first()
@@ -98,6 +100,27 @@ class EmailController:
                 recipients.append(
                     EmailReception(contact=contact, kind=RecipientKind.to)
                 )
+                
+            for recipient_email in recipient_emails_cc:
+                contact = session.exec(
+                    select(Contact).where(Contact.email_address == recipient_email)
+                ).first()
+                if not contact:
+                    raise ValueError(f"Empfänger {recipient_email} nicht gefunden")
+                recipients.append(
+                    EmailReception(contact=contact, kind=RecipientKind.cc)
+                )
+
+            for recipient_email in recipient_emails_bcc:
+                contact = session.exec(
+                    select(Contact).where(Contact.email_address == recipient_email)
+                ).first()
+                if not contact:
+                    raise ValueError(f"Empfänger {recipient_email} nicht gefunden")
+                recipients.append(
+                    EmailReception(contact=contact, kind=RecipientKind.bcc)
+                )
+
 
             email = Email(
                 id=id,
@@ -118,6 +141,21 @@ class EmailController:
             session.add(email)
             session.commit()
             # self.logger.info(f"E-Mail erstellt: {subject} von {sender_email}")
+
+    def safe_email(self,list_of_mails: list[Email]):
+        """Speichert die E-Mail Objekte aus dem Email_Api Modul"""
+        with Session(self.engine) as session:
+            for mail in list_of_mails:
+                session.add(mail)
+                session.commit()
+    
+    def _refresh(list_of_Protocols: list[PrtocolTemplate,datetime]):
+        
+
+
+
+        pass
+
 
     def get_emails(self, sender_email=None, recipient_email=None):
         """Liest E-Mails basierend auf Absender oder Empfänger aus."""
