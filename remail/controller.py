@@ -48,6 +48,7 @@ class EmailController:
         #
         # logger.info("Datenbank initialisiert")
 
+    @error_handler
     def refresh(self):
         """Aktualisiert alle E-Mails in der Datenbank."""
         with Session(self.engine) as session:
@@ -56,10 +57,6 @@ class EmailController:
             accounts = []
             for user in users:
                 password = keyring.get_password("remail/Account", user.email)
-                logging.error(f"Refreshing {user.email}")
-                if not password:
-                    logging.error(f"Password for {user.email} not found")
-                    continue # skip user if password is not available, bald hoffentlich notification
 
                 if user.protocol == Protocol.IMAP:
                     accounts += [(ImapProtocol(email=user.email, host=user.extra_information, password=password), user.last_refresh, user.email)]
@@ -106,7 +103,7 @@ class EmailController:
             session.commit()
             session.refresh(user)
     
-        
+    @error_handler
     def send_email(
         self,
         id: int,
