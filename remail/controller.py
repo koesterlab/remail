@@ -107,7 +107,7 @@ class EmailController:
             session.refresh(user)
     
         
-    def create_email(
+    def send_email(
         self,
         id: int,
         sender_email: str,
@@ -170,6 +170,18 @@ class EmailController:
                 date=datetime.now(),
                 urgency=urgency,
             )
+            
+            with Session(self.engine) as session:
+                user = session.exec (select(User).where(User.email == sender_email)).first()
+                password = keyring.get_password("remail/Account", user.email)
+                if user.protocol == Protocol.IMAP:
+                    protocol = ImapProtocol(email=user.email, host=user.extra_information, password=password)
+                elif user.protocol == Protocol.EXCHANGE:
+                    protocol = ExchangeProtocol(email=user.email, username=user.extra_information, password=password)
+
+                protocol.login()
+                protocol.send_email(email)
+                protocol.logout()
 
             if attachments:
                 email.attachments = [
@@ -278,7 +290,7 @@ class EmailController:
             return contact[0]
         else:
             return self.create_contact(email)
-
+        
 
 controller = EmailController()
 
