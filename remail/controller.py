@@ -212,13 +212,13 @@ class EmailController:
             all_new_mails.append(protocol.get_emails(date))
             deleted_mails = set(protocol.get_deleted_emails(all_message_ids))
             with Session(self.engine) as session:
-                statement_1 = (select(Email.id).where((Email.sender == email_address_acc) & (Email.message_id.in_(deleted_mails))))
+                statement_1 = (select(Email.id).where((Email.sender.has(email_address = email_address_acc)) & (Email.message_id.in_(deleted_mails))))
                 statement_2 =(
                             select(EmailReception.email_id)
                                 .join(Contact, Contact.id == EmailReception.contact_id)
                                 .join(Email, EmailReception.email_id == Email.id)
                                 .where(
-                                    (Contact.email_address == email_address_acc) &
+                                    (Contact.email_address.has(email_address = email_address_acc)) &
                                     (Email.message_id.in_(deleted_mails))
                                       )
                             )
