@@ -11,6 +11,7 @@ sys.path.append(remail_path)
 
 # Import the RAG_Backend module using the full package path
 from LLM import RAG_Backend as rag
+
 llm = rag.LLM()
 
 # Beispiel-Daten
@@ -315,8 +316,10 @@ with col3:
 
     # Initialize Chat History
     if "messages" not in st.session_state:
-        st.session_state.messages = [{"role": "assistant", "content": "How may I assist you today?"}]
-    
+        st.session_state.messages = [
+            {"role": "assistant", "content": "How may I assist you today?"}
+        ]
+
     # Display Chat Messages
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
@@ -332,4 +335,6 @@ with col3:
             with st.spinner("Thinking..."):
                 response = llm.prompt(prompt)
                 st.write(response)
-                st.session_state.messages.append({"role": "assistant", "content": response})
+                st.session_state.messages.append(
+                    {"role": "assistant", "content": response}
+                )

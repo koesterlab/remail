@@ -7,16 +7,21 @@ llm = rag.LLM()
 
 # Sidebar Configuration
 with st.sidebar:
-    st.title('🦙💬 Llama-cpp Chatbot')
-    st.write('This chatbot is created using the Llama-cpp library.')
+    st.title("🦙💬 Llama-cpp Chatbot")
+    st.write("This chatbot is created using the Llama-cpp library.")
 
     def clear_chat_history():
-        st.session_state.messages = [{"role": "assistant", "content": "How may I assist you today?"}]
-    st.button('Clear Chat History', on_click=clear_chat_history)
+        st.session_state.messages = [
+            {"role": "assistant", "content": "How may I assist you today?"}
+        ]
+
+    st.button("Clear Chat History", on_click=clear_chat_history)
 
 # Initialize Chat History
 if "messages" not in st.session_state:
-    st.session_state.messages = [{"role": "assistant", "content": "How may I assist you today?"}]
+    st.session_state.messages = [
+        {"role": "assistant", "content": "How may I assist you today?"}
+    ]
 
 # Display Chat Messages
 for message in st.session_state.messages:
