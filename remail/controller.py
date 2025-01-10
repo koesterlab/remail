@@ -6,12 +6,14 @@ from remail.database.models import (
     RecipientKind,
     Attachment,
     User,
+    Protocol,
 )
 from datetime import datetime
 import duckdb
 import logging
 from sqlmodel import SQLModel
-
+from remail.email_api.service import ImapProtocol, ExchangeProtocol
+import keyring
 
 class EmailController:
     def __init__(self):
@@ -23,13 +25,26 @@ class EmailController:
         SQLModel.metadata.create_all(engine)
         self.engine = engine
 
+        self.refresh() # kann etwas dauern
+
         # logging.basicConfig(level=logging.INFO)
         # logger = logging.getLogger(__name__)
         #
         # logger.info("Datenbank initialisiert")
 
-    def create_user(self, name: str, email: str):
-        """Erstellt einen neuen Benutzer und speichert ihn in der Datenbank."""
+    def refresh(self):
+        """Aktualisiert alle E-Mails in der Datenbank."""
+        with Session(self.engine) as session:
+            users = session.exec(select(User)).all()
+            for user in users:
+                password = keyring.get_password("remail/Account", user.email)
+                if user.protocol == Protocol.IMAP:
+                    self._refresh(ImapProtocol(email=user.email, host=user.extra_information, password=password), user.last_refresh)
+                elif user.protocol == Protocol.EXCHANGE:
+                    self._refresh(ExchangeProtocol(email=user.email, host=user.extra_information, password=password), user.last_refresh)
+
+    def create_user(self, name: str, email: str, protocol: Protocol, extra_information: str, password: str):
+        """Erstellt einen neuen Benutzer und speichert ihn in der Datenbank. extra_information ist username (Exchange) oder host (IMAP)"""
         with Session(self.engine) as session:
             existing_user = session.exec(
                 select(User).where(User.email == email)
@@ -39,7 +54,7 @@ class EmailController:
                     f"Ein Benutzer mit der E-Mail {email} existiert bereits."
                 )
 
-            user = User(name=name, email=email)
+            user = User(name=name, email=email, protocol=protocol, extra_information=extra_information)
             session.add(user)
             session.commit()
             # self.logger.info(f"Benutzer erstellt: {name} ({email})")
