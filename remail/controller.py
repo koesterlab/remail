@@ -13,6 +13,7 @@ import duckdb
 import logging
 from sqlmodel import SQLModel
 from remail.email_api.service import ImapProtocol, ExchangeProtocol
+import remail.email_api.email_errors as errors
 import keyring
 
 class EmailController:
@@ -36,12 +37,37 @@ class EmailController:
         """Aktualisiert alle E-Mails in der Datenbank."""
         with Session(self.engine) as session:
             users = session.exec(select(User)).all()
+            accounts = []
             for user in users:
                 password = keyring.get_password("remail/Account", user.email)
+
+                if not password:
+                    continue # skip user if password is not available, bald hoffentlich notification
+
                 if user.protocol == Protocol.IMAP:
-                    self._refresh(ImapProtocol(email=user.email, host=user.extra_information, password=password), user.last_refresh)
+                    accounts += [(ImapProtocol(email=user.email, host=user.extra_information, password=password), user.last_refresh, user.email)]
                 elif user.protocol == Protocol.EXCHANGE:
-                    self._refresh(ExchangeProtocol(email=user.email, host=user.extra_information, password=password), user.last_refresh)
+                    accounts += [(ExchangeProtocol(email=user.email, username=user.extra_information, password=password), user.last_refresh, user.email)]
+            try:
+                self._refresh(accounts)
+            except errors.InvalidLoginData:
+                logging.error("Fehler beim Aktualisieren der E-Mails: Ungültige Anmeldedaten")
+            except errors.ServerConnectionFail:
+                logging.error("Fehler beim Aktualisieren der E-Mails: Serververbindung fehlgeschlagen")
+            except:
+                logging.error("Fehler beim Aktualisieren der E-Mails")
+            
+            (self._update_user_last_refresh(user.email) for user in users)
+
+    def change_password(self, email: str, password: str):
+        """Ändert das Passwort eines Benutzers"""
+        with Session(self.engine) as session:
+            user = session.exec(
+                select(User).where(User.email == email)
+            ).first()
+            if not user:
+                raise ValueError(f"Benutzer mit der E-Mail {email} nicht gefunden.")
+            keyring.set_password("remail/Account", email, password)
 
     def create_user(self, name: str, email: str, protocol: Protocol, extra_information: str, password: str):
         """Erstellt einen neuen Benutzer und speichert ihn in der Datenbank. extra_information ist username (Exchange) oder host (IMAP)"""
@@ -57,6 +83,7 @@ class EmailController:
             user = User(name=name, email=email, protocol=protocol, extra_information=extra_information)
             session.add(user)
             session.commit()
+            keyring.set_password("remail/Account", email, password)
             # self.logger.info(f"Benutzer erstellt: {name} ({email})")
 
     def _update_user_last_refresh(self, email:str):
