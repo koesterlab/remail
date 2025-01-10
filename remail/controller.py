@@ -209,7 +209,7 @@ class EmailController:
                 all_mails_database += self.get_emails(recipient_email=email_address_acc)
                 all_message_ids = [mail.message_id for mail in all_mails_database]
 
-            all_new_mails.append(protocol.get_emails(date))
+            all_new_mails += protocol.get_emails(date)
             deleted_mails = set(protocol.get_deleted_emails(all_message_ids))
             with Session(self.engine) as session:
                 statement_1 = (select(Email.id).where((Email.sender.has(email_address = email_address_acc)) & (Email.message_id.in_(deleted_mails))))
