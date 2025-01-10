@@ -59,6 +59,16 @@ class EmailController:
             session.commit()
             # self.logger.info(f"Benutzer erstellt: {name} ({email})")
 
+    def _update_user_last_refresh(self, email:str):
+        """updates the date time of the last refresh to the current time"""
+        with Session(self.engine) as session:
+            user = session.exec(select(User).where(User.email == email)).first()
+            user.last_refresh = datetime.now()
+            session.add(user)
+            session.commit()
+            session.refresh(user)
+    
+        
     def create_email(
         self,
         id: int,
