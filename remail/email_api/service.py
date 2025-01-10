@@ -136,7 +136,7 @@ class ProtocolTemplate(ABC):
 
 
 class ImapProtocol(ProtocolTemplate):
-    def __init__(self, email: str, password: str, host: str, controller: "Controller"):
+    def __init__(self, email: str, password: str, host: str, controller: "EmailController"): # type: ignore
         self.user_username = email
         self.user_password = password
         self.host = host
@@ -404,7 +404,7 @@ class ImapProtocol(ProtocolTemplate):
 
 
 class ExchangeProtocol(ProtocolTemplate):
-    def __init__(self, email: str, password: str, username: str, controller: "Controller"):
+    def __init__(self, email: str, password: str, username: str, controller: "EmailController"): # type: ignore
         self.cred = None
         self.acc = None
         self._logged_in = False
@@ -581,7 +581,7 @@ def create_email(
     cc_recipients: list[str],
     bcc_recipients: list[str],
     date: datetime,
-    controller: "Controller",
+    controller: "EmailController", # type: ignore
     html_files: list[str] = None,
 ) -> Email:
 
