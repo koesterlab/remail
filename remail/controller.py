@@ -218,11 +218,11 @@ class EmailController:
                                 .join(Contact, Contact.id == EmailReception.contact_id)
                                 .join(Email, EmailReception.email_id == Email.id)
                                 .where(
-                                    (Contact.email_address.has(email_address = email_address_acc)) &
+                                    (Contact.email_address == email_address_acc) &
                                     (Email.message_id.in_(deleted_mails))
                                       )
                             )
-                deleted_mails_id += session.exec(statement_1).all()
+                deleted_mails_id += session.exec(statement_1).all() 	                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        
                 deleted_mails_id += session.exec(statement_2).all()
             protocol.logout()
         for id in deleted_mails_id:
