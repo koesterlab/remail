@@ -1,0 +1,13 @@
+# Aktivierte Regelklassen (E für Fehler, W für Warnungen, F für Formatierung, N für PEP8-Naming)
+lint.select = ["E", "W", "F","N",]
+
+# Ziel-Python-Version
+target-version = "py312"  # Passe dies an deine Python-Version an (z. B. py39, py310)
+
+# Maximale Zeilenlänge (optional)
+line-length = 88
+
+# Ignorierte Fehlercodes (falls du bestimmte Regeln ausschließen möchtest)
+lint.ignore = []
+
+# Konfiguration für PEP8-Naming (wird automatisch durch die Aktivierung von `N` berücksichtigt)
