@@ -61,7 +61,7 @@ class EmailController:
                 if user.protocol == Protocol.IMAP:
                     accounts += [(ImapProtocol(email=user.email, host=user.extra_information, password=password), user.last_refresh, user.email)]
                 elif user.protocol == Protocol.EXCHANGE:
-                    accounts += [(ExchangeProtocol(email=user.email, username=user.extra_information, password=password), user.last_refresh, user.email)]
+                    accounts += [(ExchangeProtocol(email=user.email, username=user.extra_information, password=password, controller=self), user.last_refresh, user.email)]
             
             self._refresh(accounts)
             (self._update_user_last_refresh(user.email) for user in users)
@@ -174,7 +174,7 @@ class EmailController:
                 if user.protocol == Protocol.IMAP:
                     protocol = ImapProtocol(email=user.email, host=user.extra_information, password=password)
                 elif user.protocol == Protocol.EXCHANGE:
-                    protocol = ExchangeProtocol(email=user.email, username=user.extra_information, password=password)
+                    protocol = ExchangeProtocol(email=user.email, username=user.extra_information, password=password, controller=self)
 
                 protocol.login()
                 protocol.send_email(email)
