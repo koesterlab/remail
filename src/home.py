@@ -2,6 +2,7 @@ import streamlit as st
 import time
 import random
 import mimetypes  # Für die korrekte Erkennung von MIME-Types
+from ..remail import controller
 
 
 # Beispiel-Daten
@@ -117,11 +118,16 @@ def new_contact_form():
     with col1:
         if st.button("Create new contact", key="create_contact_button"):
             if contact_name and contact_surname and email_address:
-                st.session_state.contacts[email_address] = contact_name
-                st.success(
-                    f"Created contact {contact_name,contact_surname} with email {email_address}"
-                )
-                st.rerun()
+                full_name = f"{contact_name} {contact_surname}"
+                try:
+                    # Speichern des neuen Kontakts in der Datenbank
+                    controller.create_contact(email_address=email_address, name=full_name)
+                    st.success(f"Created contact {full_name} with email {email_address}")
+                    st.rerun() # Wichtig für die Aktualisierung der Kontaktliste
+                except ValueError as e:
+                    st.error(str(e))
+                except RuntimeError as e: # Fange Runtime Errors ab
+                    st.error(f"Ein unerwarteter Fehler ist aufgetreten: {e}")
             else:
                 st.error("Please fill out all required fields.")
     with col2:
@@ -149,6 +155,13 @@ with st.sidebar:
     st.header("Contacts")
     with st.expander("New Contact"):
         new_contact_form()
+    try:
+        # Lade Kontakte aus der Datenbank
+        db_contacts = controller.get_contacts()
+        for contact in db_contacts:
+            st.write(f"{contact.name} ({contact.email_address})")
+    except Exception as e:
+        st.error(f"Error fetching contacts: {str(e)}")
 
     for email, name in st.session_state.contacts.items():
         st.write(f"{name} ({email})")

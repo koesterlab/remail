@@ -18,9 +18,9 @@ def id_field(table_name: str):
 
 
 class Contact(SQLModel, table=True):
-    id: Optional[int] = id_field("contact")
-    email_address: str
-    name: Optional[str] = None
+    id: int = Field(default=None, primary_key=True)
+    email_address: str = Field(index=True, unique=True)
+    name: str = Field(default=None)
     receptions: List["EmailReception"] = Relationship(back_populates="contact")
     sent_emails: List["Email"] = Relationship(back_populates="sender")
 

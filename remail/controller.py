@@ -111,16 +111,19 @@ class EmailController:
             session.commit()
     
     def create_contact(self, email_address: str, name: str = None):
-        """Erstellt einen neuen Kontakt."""
+     """Erstellt einen neuen Kontakt und speichert ihn in der Datenbank."""
+    try:
         with Session(self.engine) as session:
             existing_contact = session.exec(select(Contact).where(Contact.email_address == email_address)).first()
             if existing_contact:
-                raise ValueError(f"Kontakt mit E-Mail {email_address} existiert bereits.")
+                raise ValueError(f"Kontakt mit der E-Mail-Adresse {email_address} existiert bereits.")
 
             contact = Contact(email_address=email_address, name=name)
             session.add(contact)
             session.commit()
-            # self.logger.info(f"Kontakt erstellt: {name} ({email_address})")
+    except Exception as e:
+        raise RuntimeError(f"Fehler beim Erstellen des Kontakts: {str(e)}") #Runtime Error werfen
+
 
     def get_contacts(self):
         """Gibt alle Kontakte aus."""
