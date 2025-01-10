@@ -69,4 +69,4 @@ class User(SQLModel, table=True):
     protocol: Protocol = Field(sa_column=sqlalchemy.Column(sqlalchemy.Enum(Protocol)))
     extra_information: str
     """if Exchange: extra_information = username else: extra_information = host"""
-    last_refresh: datetime = None
+    last_refresh: Optional[datetime] = None

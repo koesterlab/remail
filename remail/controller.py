@@ -16,6 +16,21 @@ from remail.email_api.service import ImapProtocol, ExchangeProtocol, ProtocolTem
 import remail.email_api.email_errors as errors
 import keyring
 
+
+def error_handler(func):
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except errors.InvalidLoginData:
+            logging.error("Fehler beim Aktualisieren der E-Mails: Ungültige Anmeldedaten")
+        except errors.ServerConnectionFail:
+            logging.error("Fehler beim Aktualisieren der E-Mails: Serververbindung fehlgeschlagen")
+        except Exception as e:
+            logging.error(e,exc_info=True)
+            logging.error("Fehler beim Aktualisieren der E-Mails")
+
+    return wrapper
+
 class EmailController:
     def __init__(self):
         # Connect to the DuckDB database (will create a file-based database if it doesn't exist)
@@ -37,27 +52,23 @@ class EmailController:
         """Aktualisiert alle E-Mails in der Datenbank."""
         with Session(self.engine) as session:
             users = session.exec(select(User)).all()
+            print(users)
             accounts = []
             for user in users:
                 password = keyring.get_password("remail/Account", user.email)
-
+                logging.error(f"Refreshing {user.email}")
                 if not password:
+                    logging.error(f"Password for {user.email} not found")
                     continue # skip user if password is not available, bald hoffentlich notification
 
                 if user.protocol == Protocol.IMAP:
                     accounts += [(ImapProtocol(email=user.email, host=user.extra_information, password=password), user.last_refresh, user.email)]
                 elif user.protocol == Protocol.EXCHANGE:
                     accounts += [(ExchangeProtocol(email=user.email, username=user.extra_information, password=password), user.last_refresh, user.email)]
-            try:
-                self._refresh(accounts)
-            except errors.InvalidLoginData:
-                logging.error("Fehler beim Aktualisieren der E-Mails: Ungültige Anmeldedaten")
-            except errors.ServerConnectionFail:
-                logging.error("Fehler beim Aktualisieren der E-Mails: Serververbindung fehlgeschlagen")
-            except:
-                logging.error("Fehler beim Aktualisieren der E-Mails")
             
+            self._refresh(accounts)
             (self._update_user_last_refresh(user.email) for user in users)
+                
 
     def change_password(self, email: str, password: str):
         """Ändert das Passwort eines Benutzers"""
@@ -96,7 +107,7 @@ class EmailController:
             session.refresh(user)
     
         
-    def create_email(
+    def send_email(
         self,
         id: int,
         sender_email: str,
@@ -159,6 +170,18 @@ class EmailController:
                 date=datetime.now(),
                 urgency=urgency,
             )
+            
+            with Session(self.engine) as session:
+                user = session.exec (select(User).where(User.email == sender_email)).first()
+                password = keyring.get_password("remail/Account", user.email)
+                if user.protocol == Protocol.IMAP:
+                    protocol = ImapProtocol(email=user.email, host=user.extra_information, password=password)
+                elif user.protocol == Protocol.EXCHANGE:
+                    protocol = ExchangeProtocol(email=user.email, username=user.extra_information, password=password)
+
+                protocol.login()
+                protocol.send_email(email)
+                protocol.logout()
 
             if attachments:
                 email.attachments = [
@@ -277,7 +300,7 @@ class EmailController:
             return contact[0]
         else:
             return self.create_contact(email)
-
+        
 
 controller = EmailController()
 
