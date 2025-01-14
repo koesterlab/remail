@@ -313,7 +313,6 @@ class ImapProtocol(ProtocolTemplate):
                 
                 x = getaddresses([email_message["From"]])
                 saddr = x[0][1]
-                print(saddr)
                 listofMails += [
                     create_email(
                         uid=email_message["Message-Id"],
@@ -589,10 +588,7 @@ def create_email(
 ) -> Email:
 
     sender_contact = controller.get_contact(sender)
-    print(sender_contact)
-
-    print(to_recipients,"\n", cc_recipients, "\n",bcc_recipients)
-
+    print("Nein")
     recipients = [
         EmailReception(contact=controller.get_contact(recipient), kind=RecipientKind.to)
         for recipient in to_recipients
@@ -611,8 +607,6 @@ def create_email(
             )
             for recipient in bcc_recipients
         ]
-
-    print("Länge Empfänger",len(recipients))
 
     email = Email(
         message_id=uid,

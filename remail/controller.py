@@ -15,6 +15,7 @@ from sqlmodel import SQLModel
 from remail.email_api.service import ImapProtocol, ExchangeProtocol, ProtocolTemplate
 import remail.email_api.email_errors as errors
 import keyring
+from tzlocal import get_localzone
 
 
 def error_handler(func):
@@ -64,7 +65,8 @@ class EmailController:
                     accounts += [(ExchangeProtocol(email=user.email, username=user.extra_information, password=password, controller=self), user.last_refresh, user.email)]
             
             self._refresh(accounts)
-            (self._update_user_last_refresh(user.email) for user in users)
+            for user in users:
+                self._update_user_last_refresh(user.email) 
                 
 
     def change_password(self, email: str, password: str):
@@ -95,11 +97,11 @@ class EmailController:
             # self.logger.info(f"Benutzer erstellt: {name} ({email})")
 
     def _update_user_last_refresh(self, email:str):
+        print("updating", email)
         """updates the date time of the last refresh to the current time"""
         with Session(self.engine) as session:
             user = session.exec(select(User).where(User.email == email)).first()
-            user.last_refresh = datetime.now()
-            session.add(user)
+            user.last_refresh = datetime.now(tz = get_localzone())
             session.commit()
             session.refresh(user)
     
@@ -164,7 +166,7 @@ class EmailController:
                 body=body,
                 attachments=attachments,
                 recipients=recipients,
-                date=datetime.now(),
+                date=datetime.now(tz = get_localzone()) if date is None else date,
                 urgency=urgency,
             )
             
