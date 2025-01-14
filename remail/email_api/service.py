@@ -310,8 +310,10 @@ class ImapProtocol(ProtocolTemplate):
                     body = email_message.get_payload(decode=True).decode(
                         email_message.get_content_charset() or "utf-8", errors="replace"
                     )
-
-                _,saddr = getaddresses([email_message["From"]])
+                
+                x = getaddresses([email_message["From"]])
+                saddr = x[0][1]
+                print(saddr)
                 listofMails += [
                     create_email(
                         uid=email_message["Message-Id"],
@@ -319,9 +321,9 @@ class ImapProtocol(ProtocolTemplate):
                         subject=email_message["Subject"],
                         body=body,
                         attachments=attachments_file_names,
-                        to_recipients=[addr  for _,addr in getaddresses([email_message["To"]])],
-                        cc_recipients=[addr  for _,addr in getaddresses([email_message["Cc"]])],
-                        bcc_recipients=[addr  for _,addr in getaddresses([email_message["Bcc"]])],
+                        to_recipients=[addr  for _,addr in getaddresses([email_message["To"]])if addr and addr.lower() != "none"],
+                        cc_recipients=[addr  for _,addr in getaddresses([email_message["Cc"]])if addr and addr.lower() != "none"],
+                        bcc_recipients=[addr  for _,addr in getaddresses([email_message["Bcc"]])if addr and addr.lower() != "none"],
                         date=parsedate_to_datetime(email_message["Date"]),
                         controller = self.controller,
                         html_files=html_parts,
@@ -589,6 +591,8 @@ def create_email(
     sender_contact = controller.get_contact(sender)
     print(sender_contact)
 
+    print(to_recipients,"\n", cc_recipients, "\n",bcc_recipients)
+
     recipients = [
         EmailReception(contact=controller.get_contact(recipient), kind=RecipientKind.to)
         for recipient in to_recipients
@@ -608,9 +612,11 @@ def create_email(
             for recipient in bcc_recipients
         ]
 
+    print("Länge Empfänger",len(recipients))
+
     email = Email(
         message_id=uid,
-        sender_contact=sender_contact,
+        sender=sender_contact,
         subject=subject,
         body=body,
         recipients=recipients,
