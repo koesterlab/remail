@@ -311,10 +311,11 @@ class ImapProtocol(ProtocolTemplate):
                         email_message.get_content_charset() or "utf-8", errors="replace"
                     )
 
+                _,saddr = getaddresses([email_message["From"]])
                 listofMails += [
                     create_email(
                         uid=email_message["Message-Id"],
-                        sender=email_message["From"],
+                        sender= saddr,
                         subject=email_message["Subject"],
                         body=body,
                         attachments=attachments_file_names,
