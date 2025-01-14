@@ -38,7 +38,7 @@ import mimetypes
 from werkzeug.utils import secure_filename
 import tempfile
 from email.header import decode_header
-from email.utils import parsedate_to_datetime
+from email.utils import parsedate_to_datetime,getaddresses
 import remail.email_api.email_errors as ee
 from pytz import timezone
 
@@ -318,9 +318,9 @@ class ImapProtocol(ProtocolTemplate):
                         subject=email_message["Subject"],
                         body=body,
                         attachments=attachments_file_names,
-                        to_recipients=email_message["To"],
-                        cc_recipients=email_message["Cc"],
-                        bcc_recipients=email_message["Bcc"],
+                        to_recipients=[addr  for _,addr in getaddresses([email_message["To"]])],
+                        cc_recipients=[addr  for _,addr in getaddresses([email_message["Cc"]])],
+                        bcc_recipients=[addr  for _,addr in getaddresses([email_message["Bcc"]])],
                         date=parsedate_to_datetime(email_message["Date"]),
                         controller = self.controller,
                         html_files=html_parts,
