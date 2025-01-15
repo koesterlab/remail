@@ -1,15 +1,23 @@
 import chromadb as db
 import hashlib
-import os
+import os, sys
 import requests
 from llama_cpp import Llama
-from llama_index.core import Settings, VectorStoreIndex, SimpleDirectoryReader
+from llama_index.core import Settings, VectorStoreIndex, SimpleDirectoryReader, StorageContext
 from llama_index.vector_stores.chroma import ChromaVectorStore
-from llama_index.core import StorageContext
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from pathlib import Path
 from llama_index.core.query_engine import RetrySourceQueryEngine
 from llama_index.core.evaluation import RelevancyEvaluator
+from llama_index.core.schema import Document
+from llama_index.readers.database import DatabaseReader
+
+# Add the Remail directory (parent folder) to sys.path
+remail_path = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+sys.path.append(remail_path)
+
+# Import the RAG_Backend module using the full package path
+from controller import EmailController as EC
 
 
 class LLM(object):
@@ -171,7 +179,7 @@ class LLM(object):
         return hash_obj.hexdigest()
 
     def prompt(self, prompt: str) -> str:
-        """Generates a response"""
+        """Use this for prompting. Takes a string as the input and returns the response as a string"""
         try:
             context = self._query_engine.query(prompt).response
             response = self._llama(context, max_tokens=Settings.context_window)[
@@ -180,3 +188,9 @@ class LLM(object):
             return response
         except Exception as e:
             return f"An error occurred: {str(e)}"
+
+    def _connectToDb(self):
+        controller = EC()
+        emails = controller.get_emails()
+        while True:
+            print("x")

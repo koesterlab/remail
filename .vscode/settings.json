@@ -1,0 +1,11 @@
+{
+    "sqltools.connections": [
+        {
+            "previewLimit": 50,
+            "driver": "DuckDB",
+            "database": "${workspaceFolder:remail}/database.db",
+            "name": "duckdb"
+        }
+    ],
+    "sqltools.useNodeRuntime": true
+}
