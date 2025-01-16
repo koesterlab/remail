@@ -2,9 +2,9 @@ import sys, os
 # Add the Remail directory (parent folder) to sys.path
 remail_path = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.append(remail_path)
-# for those who have not installed the priject as a package
+# for those who have not installed the project as a package
 
-from sqlmodel import Session, select, create_engine
+from sqlmodel import Session, select, create_engine, SQLModel
 from remail.database.models import (
     Email,
     Contact,
@@ -16,23 +16,22 @@ from remail.database.models import (
 from datetime import datetime
 import duckdb
 import logging
-from sqlmodel import SQLModel
 
 
 class EmailController:
     def __init__(self):
         # Connect to the DuckDB database (will create a file-based database if it doesn't exist)
-        conn = duckdb.connect("database.db")
-        conn.close()
+        #conn = duckdb.connect("database.db")
+        #conn.close()
 
         engine = create_engine("duckdb:///database.db")
         SQLModel.metadata.create_all(engine)
         self.engine = engine
 
-        # logging.basicConfig(level=logging.INFO)
-        # logger = logging.getLogger(__name__)
-        #
-        # logger.info("Datenbank initialisiert")
+        logging.basicConfig(level=logging.INFO)
+        logger = logging.getLogger(__name__)
+        
+        logger.info("Datenbank initialisiert")
 
     def create_user(self, name: str, email: str):
         """Erstellt einen neuen Benutzer und speichert ihn in der Datenbank."""
@@ -48,7 +47,7 @@ class EmailController:
             user = User(name=name, email=email)
             session.add(user)
             session.commit()
-            # self.logger.info(f"Benutzer erstellt: {name} ({email})")
+            self.logger.info(f"Benutzer erstellt: {name} ({email})")
 
     def create_email(
         self,
@@ -67,7 +66,12 @@ class EmailController:
                 select(Contact).where(Contact.email_address == sender_email)
             ).first()
             if not sender:
-                raise ValueError("Absender nicht gefunden")
+                #raise ValueError("Absender nicht gefunden") #why??? just add them as contacts??
+                self.create_contact(sender_email, None)
+                #contact created, select sender again
+                sender = session.exec(
+                select(Contact).where(Contact.email_address == sender_email)
+                ).first()
 
             recipients = []
             for recipient_email in recipient_emails:
@@ -75,7 +79,13 @@ class EmailController:
                     select(Contact).where(Contact.email_address == recipient_email)
                 ).first()
                 if not contact:
-                    raise ValueError(f"Empfänger {recipient_email} nicht gefunden")
+                    #raise ValueError(f"Empfänger {recipient_email} nicht gefunden") #same here please :(
+                    self.create_contact(recipient_email)
+                    # now we can select the contact again
+                    contact = session.exec(
+                    select(Contact).where(Contact.email_address == recipient_email)
+                    ).first()
+                    
                 recipients.append(
                     EmailReception(contact=contact, kind=RecipientKind.to)
                 )
@@ -98,7 +108,7 @@ class EmailController:
 
             session.add(email)
             session.commit()
-            # self.logger.info(f"E-Mail erstellt: {subject} von {sender_email}")
+            self.logger.info(f"E-Mail erstellt: {subject} von {sender_email}")
 
     def get_emails(self, sender_email=None, recipient_email=None):
         """Liest E-Mails basierend auf Absender oder Empfänger aus."""
@@ -113,7 +123,7 @@ class EmailController:
                     )
                 )
             emails = session.exec(query).all()
-            # self.logger.info(f"{len(emails)} E-Mails gefunden.")
+            self.logger.info(f"{len(emails)} E-Mails gefunden.")
             return emails
 
     def update_email_subject(self, email_id: int, new_subject: str):
@@ -149,13 +159,13 @@ class EmailController:
             contact = Contact(email_address=email_address, name=name)
             session.add(contact)
             session.commit()
-            # self.logger.info(f"Kontakt erstellt: {name} ({email_address})")
+            self.logger.info(f"Kontakt erstellt: {name} ({email_address})")
 
     def get_contacts(self):
         """Gibt alle Kontakte aus."""
         with Session(self.engine) as session:
             contacts = session.exec(select(Contact)).all()
-            # self.logger.info(f"{len(contacts)} Kontakte gefunden.")
+            self.logger.info(f"{len(contacts)} Kontakte gefunden.")
             return contacts
 
     def get_contact(self, email: str) -> Contact:
@@ -168,7 +178,7 @@ class EmailController:
             return self.create_contact(email)
 
 
-controller = EmailController()
+#controller = EmailController()
 
 
 # ret = controller.create_email("yasin.arazay@gmail.com", ["recipient@gmail.com"], "Generic Subject", "HELLLO")

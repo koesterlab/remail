@@ -3,3 +3,4 @@
 /remail/llm/db
 *.gguf
 __pycache__
+/llm/db

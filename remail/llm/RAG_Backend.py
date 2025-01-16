@@ -11,14 +11,20 @@ from llama_index.core.query_engine import RetrySourceQueryEngine
 from llama_index.core.evaluation import RelevancyEvaluator
 from llama_index.core.schema import Document
 from llama_index.readers.database import DatabaseReader
+from sqlmodel import Session, select, create_engine, SQLModel
 
 # Add the Remail directory (parent folder) to sys.path
 remail_path = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.append(remail_path)
 
-# Import the RAG_Backend module using the full package path
-from controller import EmailController as EC
-
+from remail.database.models import (
+    Email,
+    Contact,
+    EmailReception,
+    RecipientKind,
+    Attachment,
+    User,
+)
 
 class LLM(object):
     # for installing the model can be changed to any model later
@@ -188,9 +194,3 @@ class LLM(object):
             return response
         except Exception as e:
             return f"An error occurred: {str(e)}"
-
-    def _connectToDb(self):
-        controller = EC()
-        emails = controller.get_emails()
-        while True:
-            print("x")
