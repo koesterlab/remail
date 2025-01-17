@@ -149,9 +149,12 @@ class ImapProtocol(ProtocolTemplate):
     def logged_in(self) -> bool:
         return self._logged_in
 
+    @error_handler
     def login(self):
         if self.logged_in:
             return
+        if self.user_password is None:
+            raise ee.InvalidLoginData() from None
         try:
             self.IMAP.login(self.user_username, self.user_password)
             self._logged_in = True
@@ -160,6 +163,7 @@ class ImapProtocol(ProtocolTemplate):
         except Exception as e:
             raise e
 
+    @error_handler
     def logout(self):
         self.IMAP.logout()
         self.user_password = None
