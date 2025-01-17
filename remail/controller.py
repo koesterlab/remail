@@ -1,10 +1,4 @@
-import sys, os
-# Add the Remail directory (parent folder) to sys.path
-remail_path = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-sys.path.append(remail_path)
-# for those who have not installed the project as a package
-
-from sqlmodel import Session, select, create_engine, SQLModel
+from sqlmodel import Session, select, create_engine
 from remail.database.models import (
     Email,
     Contact,
@@ -12,29 +6,81 @@ from remail.database.models import (
     RecipientKind,
     Attachment,
     User,
+    Protocol,
 )
 from datetime import datetime
 import duckdb
 import logging
+from sqlmodel import SQLModel
+from remail.email_api.service import ImapProtocol, ExchangeProtocol, ProtocolTemplate
+import remail.email_api.email_errors as errors
+import keyring
+from tzlocal import get_localzone
 
+
+def error_handler(func):
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except errors.InvalidLoginData:
+            logging.error("Fehler beim Aktualisieren der E-Mails: Ungültige Anmeldedaten")
+        except errors.ServerConnectionFail:
+            logging.error("Fehler beim Aktualisieren der E-Mails: Serververbindung fehlgeschlagen")
+        except Exception as e:
+            logging.error(e,exc_info=True)
+            logging.error("Fehler beim Aktualisieren der E-Mails")
+
+    return wrapper
 
 class EmailController:
     def __init__(self):
         # Connect to the DuckDB database (will create a file-based database if it doesn't exist)
-        #conn = duckdb.connect("database.db")
-        #conn.close()
+        conn = duckdb.connect("database.db")
+        conn.close()
 
         engine = create_engine("duckdb:///database.db")
         SQLModel.metadata.create_all(engine)
         self.engine = engine
 
-        logging.basicConfig(level=logging.INFO)
-        logger = logging.getLogger(__name__)
-        
-        logger.info("Datenbank initialisiert")
+        self.refresh() # kann etwas dauern
 
-    def create_user(self, name: str, email: str):
-        """Erstellt einen neuen Benutzer und speichert ihn in der Datenbank."""
+        # logging.basicConfig(level=logging.INFO)
+        # logger = logging.getLogger(__name__)
+        #
+        # logger.info("Datenbank initialisiert")
+
+    @error_handler
+    def refresh(self):
+        """Aktualisiert alle E-Mails in der Datenbank."""
+        with Session(self.engine) as session:
+            users = session.exec(select(User)).all()
+            print(users)
+            accounts = []
+            for user in users:
+                password = keyring.get_password("remail/Account", user.email)
+
+                if user.protocol == Protocol.IMAP:
+                    accounts += [(ImapProtocol(email=user.email, host=user.extra_information, password=password, controller=self), user.last_refresh, user.email)]
+                elif user.protocol == Protocol.EXCHANGE:
+                    accounts += [(ExchangeProtocol(email=user.email, username=user.extra_information, password=password, controller=self), user.last_refresh, user.email)]
+            
+            self._refresh(accounts)
+            for user in users:
+                self._update_user_last_refresh(user.email) 
+                
+
+    def change_password(self, email: str, password: str):
+        """Ändert das Passwort eines Benutzers"""
+        with Session(self.engine) as session:
+            user = session.exec(
+                select(User).where(User.email == email)
+            ).first()
+            if not user:
+                raise ValueError(f"Benutzer mit der E-Mail {email} nicht gefunden.")
+            keyring.set_password("remail/Account", email, password)
+
+    def create_user(self, name: str, email: str, protocol: Protocol, extra_information: str, password: str):
+        """Erstellt einen neuen Benutzer und speichert ihn in der Datenbank. extra_information ist username (Exchange) oder host (IMAP)"""
         with Session(self.engine) as session:
             existing_user = session.exec(
                 select(User).where(User.email == email)
@@ -44,16 +90,29 @@ class EmailController:
                     f"Ein Benutzer mit der E-Mail {email} existiert bereits."
                 )
 
-            user = User(name=name, email=email)
+            user = User(name=name, email=email, protocol=protocol, extra_information=extra_information)
             session.add(user)
             session.commit()
-            self.logger.info(f"Benutzer erstellt: {name} ({email})")
+            keyring.set_password("remail/Account", email, password)
+            # self.logger.info(f"Benutzer erstellt: {name} ({email})")
 
-    def create_email(
+    def _update_user_last_refresh(self, email:str):
+        print("updating", email)
+        """updates the date time of the last refresh to the current time"""
+        with Session(self.engine) as session:
+            user = session.exec(select(User).where(User.email == email)).first()
+            user.last_refresh = datetime.now(tz = get_localzone())
+            session.commit()
+            session.refresh(user)
+    
+    @error_handler
+    def send_email(
         self,
         id: int,
         sender_email: str,
-        recipient_emails: list,
+        recipient_emails_to: list,
+        recipient_emails_cc: list,
+        recipient_emails_bcc: list,
         subject: str,
         body: str,
         attachments: list = None,
@@ -66,29 +125,39 @@ class EmailController:
                 select(Contact).where(Contact.email_address == sender_email)
             ).first()
             if not sender:
-                #raise ValueError("Absender nicht gefunden") #why??? just add them as contacts??
-                self.create_contact(sender_email, None)
-                #contact created, select sender again
-                sender = session.exec(
-                select(Contact).where(Contact.email_address == sender_email)
-                ).first()
+                raise ValueError("Absender nicht gefunden")
 
             recipients = []
-            for recipient_email in recipient_emails:
+            for recipient_email in recipient_emails_to:
                 contact = session.exec(
                     select(Contact).where(Contact.email_address == recipient_email)
                 ).first()
                 if not contact:
-                    #raise ValueError(f"Empfänger {recipient_email} nicht gefunden") #same here please :(
-                    self.create_contact(recipient_email)
-                    # now we can select the contact again
-                    contact = session.exec(
-                    select(Contact).where(Contact.email_address == recipient_email)
-                    ).first()
-                    
+                    raise ValueError(f"Empfänger {recipient_email} nicht gefunden")
                 recipients.append(
                     EmailReception(contact=contact, kind=RecipientKind.to)
                 )
+                
+            for recipient_email in recipient_emails_cc:
+                contact = session.exec(
+                    select(Contact).where(Contact.email_address == recipient_email)
+                ).first()
+                if not contact:
+                    raise ValueError(f"Empfänger {recipient_email} nicht gefunden")
+                recipients.append(
+                    EmailReception(contact=contact, kind=RecipientKind.cc)
+                )
+
+            for recipient_email in recipient_emails_bcc:
+                contact = session.exec(
+                    select(Contact).where(Contact.email_address == recipient_email)
+                ).first()
+                if not contact:
+                    raise ValueError(f"Empfänger {recipient_email} nicht gefunden")
+                recipients.append(
+                    EmailReception(contact=contact, kind=RecipientKind.bcc)
+                )
+
 
             email = Email(
                 id=id,
@@ -97,9 +166,21 @@ class EmailController:
                 body=body,
                 attachments=attachments,
                 recipients=recipients,
-                date=datetime.now(),
+                date=datetime.now(tz = get_localzone()) if date is None else date,
                 urgency=urgency,
             )
+            
+            with Session(self.engine) as session:
+                user = session.exec (select(User).where(User.email == sender_email)).first()
+                password = keyring.get_password("remail/Account", user.email)
+                if user.protocol == Protocol.IMAP:
+                    protocol = ImapProtocol(email=user.email, host=user.extra_information, password=password)
+                elif user.protocol == Protocol.EXCHANGE:
+                    protocol = ExchangeProtocol(email=user.email, username=user.extra_information, password=password, controller=self)
+
+                protocol.login()
+                protocol.send_email(email)
+                protocol.logout()
 
             if attachments:
                 email.attachments = [
@@ -108,7 +189,51 @@ class EmailController:
 
             session.add(email)
             session.commit()
-            self.logger.info(f"E-Mail erstellt: {subject} von {sender_email}")
+            # self.logger.info(f"E-Mail erstellt: {subject} von {sender_email}")
+
+    def safe_email(self,list_of_mails: list[Email]):
+        """Speichert die E-Mail Objekte aus dem Email_Api Modul"""
+        with Session(self.engine) as session:
+            for mail in list_of_mails:
+                session.merge(mail)
+                session.commit()
+    
+    def _refresh(self,list_of_protocols: list[ProtocolTemplate,datetime,str]):
+        all_mails_database = []
+        all_message_ids = []
+        all_new_mails = []
+        deleted_mails_id = []
+
+        for protocol,date,email_address_acc in list_of_protocols:
+            protocol.login()
+            with Session(self.engine) as session:
+                all_mails_database += self.get_emails(sender_email=email_address_acc)
+                all_mails_database += self.get_emails(recipient_email=email_address_acc)
+                all_message_ids = [mail.message_id for mail in all_mails_database]
+
+            all_new_mails += protocol.get_emails(date)
+            deleted_mails = set(protocol.get_deleted_emails(all_message_ids))
+            with Session(self.engine) as session:
+                statement_1 = (select(Email.id).where((Email.sender.has(email_address = email_address_acc)) & (Email.message_id.in_(deleted_mails))))
+                statement_2 =(
+                            select(EmailReception.email_id)
+                                .join(Contact, Contact.id == EmailReception.contact_id)
+                                .join(Email, EmailReception.email_id == Email.id)
+                                .where(
+                                    (Contact.email_address == email_address_acc) &
+                                    (Email.message_id.in_(deleted_mails))
+                                      )
+                            )
+                deleted_mails_id += session.exec(statement_1).all() 	                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        
+                deleted_mails_id += session.exec(statement_2).all()
+            protocol.logout()
+        for id in deleted_mails_id:
+                self.delete_email(id)
+                
+        with Session(self.engine) as session:
+            self.safe_email(all_new_mails)
+        
+
 
     def get_emails(self, sender_email=None, recipient_email=None):
         """Liest E-Mails basierend auf Absender oder Empfänger aus."""
@@ -123,7 +248,7 @@ class EmailController:
                     )
                 )
             emails = session.exec(query).all()
-            self.logger.info(f"{len(emails)} E-Mails gefunden.")
+            # self.logger.info(f"{len(emails)} E-Mails gefunden.")
             return emails
 
     def update_email_subject(self, email_id: int, new_subject: str):
@@ -159,13 +284,14 @@ class EmailController:
             contact = Contact(email_address=email_address, name=name)
             session.add(contact)
             session.commit()
-            self.logger.info(f"Kontakt erstellt: {name} ({email_address})")
+            return contact
+            # self.logger.info(f"Kontakt erstellt: {name} ({email_address})")
 
     def get_contacts(self):
         """Gibt alle Kontakte aus."""
         with Session(self.engine) as session:
             contacts = session.exec(select(Contact)).all()
-            self.logger.info(f"{len(contacts)} Kontakte gefunden.")
+            # self.logger.info(f"{len(contacts)} Kontakte gefunden.")
             return contacts
 
     def get_contact(self, email: str) -> Contact:
@@ -176,9 +302,9 @@ class EmailController:
             return contact[0]
         else:
             return self.create_contact(email)
+        
 
-
-#controller = EmailController()
+controller = EmailController()
 
 
 # ret = controller.create_email("yasin.arazay@gmail.com", ["recipient@gmail.com"], "Generic Subject", "HELLLO")

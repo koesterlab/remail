@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-from remail.controller import controller
 from remail.database.models import (
     Email,
     EmailReception,
@@ -33,13 +32,14 @@ from exchangelib import (
     FileAttachment,
     errors as exch_errors,
     FolderCollection,
+    UTC
 )
 import os
 import mimetypes
 from werkzeug.utils import secure_filename
 import tempfile
 from email.header import decode_header
-from email.utils import parsedate_to_datetime
+from email.utils import parsedate_to_datetime,getaddresses
 import remail.email_api.email_errors as ee
 from pytz import timezone
 
@@ -137,12 +137,13 @@ class ProtocolTemplate(ABC):
 
 
 class ImapProtocol(ProtocolTemplate):
-    def __init__(self, email: str, password: str, host: str):
+    def __init__(self, email: str, password: str, host: str, controller: "EmailController"): # type: ignore
         self.user_username = email
         self.user_password = password
         self.host = host
         self._logged_in = False
         self.IMAP = IMAPClient(self.host, use_uid=True)
+        self.controller = controller
 
     @property
     def logged_in(self) -> bool:
@@ -310,18 +311,21 @@ class ImapProtocol(ProtocolTemplate):
                     body = email_message.get_payload(decode=True).decode(
                         email_message.get_content_charset() or "utf-8", errors="replace"
                     )
-
+                
+                x = getaddresses([email_message["From"]])
+                saddr = x[0][1]
                 listofMails += [
                     create_email(
                         uid=email_message["Message-Id"],
-                        sender=email_message["From"],
+                        sender= saddr,
                         subject=email_message["Subject"],
                         body=body,
                         attachments=attachments_file_names,
-                        to_recipients=email_message["To"],
-                        cc_recipients=email_message["Cc"],
-                        bcc_recipients=email_message["Bcc"],
+                        to_recipients=[addr  for _,addr in getaddresses([email_message["To"]])if addr and addr.lower() != "none"],
+                        cc_recipients=[addr  for _,addr in getaddresses([email_message["Cc"]])if addr and addr.lower() != "none"],
+                        bcc_recipients=[addr  for _,addr in getaddresses([email_message["Bcc"]])if addr and addr.lower() != "none"],
                         date=parsedate_to_datetime(email_message["Date"]),
+                        controller = self.controller,
                         html_files=html_parts,
                     )
                 ]
@@ -403,13 +407,14 @@ class ImapProtocol(ProtocolTemplate):
 
 
 class ExchangeProtocol(ProtocolTemplate):
-    def __init__(self, email: str, password: str, username: str):
+    def __init__(self, email: str, password: str, username: str, controller: "EmailController"): # type: ignore
         self.cred = None
         self.acc = None
         self._logged_in = False
         self.email = email
         self.password = password
         self.username = username
+        self.controller = controller
 
     @property
     def logged_in(self) -> bool:
@@ -535,7 +540,8 @@ class ExchangeProtocol(ProtocolTemplate):
                 attachments += [safe_file(attachment.name, attachment.content)]
 
         ews_datetime_str = item.datetime_received.astimezone()
-        parsed_datetime = datetime.fromisoformat(ews_datetime_str.ewsformat())
+        parsed_datetime = datetime.fromisoformat(ews_datetime_str.ewsformat()).astimezone(timezone("UTC"))
+        print(parsed_datetime, datetime.now())
 
         body = item.text_body
         if item.body != body:
@@ -560,6 +566,7 @@ class ExchangeProtocol(ProtocolTemplate):
                     for item in (item.bcc_recipients if item.bcc_recipients else [])
                 ],
                 date=parsed_datetime,
+                controller=self.controller,
                 html_files=html,
             )
         ]
@@ -578,10 +585,11 @@ def create_email(
     cc_recipients: list[str],
     bcc_recipients: list[str],
     date: datetime,
+    controller: "EmailController", # type: ignore
     html_files: list[str] = None,
 ) -> Email:
-    sender_contact = controller.get_contact(sender)
 
+    sender_contact = controller.get_contact(sender)
     recipients = [
         EmailReception(contact=controller.get_contact(recipient), kind=RecipientKind.to)
         for recipient in to_recipients
@@ -603,7 +611,7 @@ def create_email(
 
     email = Email(
         message_id=uid,
-        sender_contact=sender_contact,
+        sender=sender_contact,
         subject=subject,
         body=body,
         recipients=recipients,
