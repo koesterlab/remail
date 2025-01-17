@@ -32,6 +32,7 @@ from exchangelib import (
     FileAttachment,
     errors as exch_errors,
     FolderCollection,
+    UTC
 )
 import os
 import mimetypes
@@ -539,7 +540,8 @@ class ExchangeProtocol(ProtocolTemplate):
                 attachments += [safe_file(attachment.name, attachment.content)]
 
         ews_datetime_str = item.datetime_received.astimezone()
-        parsed_datetime = datetime.fromisoformat(ews_datetime_str.ewsformat())
+        parsed_datetime = datetime.fromisoformat(ews_datetime_str.ewsformat()).astimezone(timezone("UTC"))
+        print(parsed_datetime, datetime.now())
 
         body = item.text_body
         if item.body != body:
@@ -588,7 +590,6 @@ def create_email(
 ) -> Email:
 
     sender_contact = controller.get_contact(sender)
-    print("Nein")
     recipients = [
         EmailReception(contact=controller.get_contact(recipient), kind=RecipientKind.to)
         for recipient in to_recipients
