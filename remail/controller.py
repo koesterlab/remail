@@ -307,6 +307,15 @@ class EmailController:
             session.commit()
             return contact
             # self.logger.info(f"Kontakt erstellt: {name} ({email_address})")
+            
+    def change_name_Contact(self,email_address: str,name: str):
+        """Change the name of a Contact with a specific email_address"""
+        with Session(self.engine) as session:
+            contact = session.exec(select(Contact).where(Contact.email_address == email_address)).first()
+            contact.name = name
+            session.commit()
+            session.refresh(contact)
+
 
     def get_contacts(self):
         """Gibt alle Kontakte aus."""
