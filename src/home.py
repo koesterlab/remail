@@ -2,7 +2,7 @@ import streamlit as st
 import time
 import random
 import mimetypes  # Für die korrekte Erkennung von MIME-Types
-from ..remail import controller
+from remail.controller import controller
 
 
 # Beispiel-Daten

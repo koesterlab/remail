@@ -1,5 +1,5 @@
 from sqlmodel import Session, select, create_engine
-from database.models import Email, Contact, EmailReception, RecipientKind, Attachment
+from remail.database.models import Email, Contact, EmailReception, RecipientKind, Attachment, User
 from datetime import datetime
 import duckdb
 import logging
@@ -110,19 +110,20 @@ class EmailController:
             session.delete(email)
             session.commit()
     
-    def create_contact(self, email_address: str, name: str = None):
-     """Erstellt einen neuen Kontakt und speichert ihn in der Datenbank."""
-    try:
-        with Session(self.engine) as session:
-            existing_contact = session.exec(select(Contact).where(Contact.email_address == email_address)).first()
-            if existing_contact:
-                raise ValueError(f"Kontakt mit der E-Mail-Adresse {email_address} existiert bereits.")
+    def create_contact(self, email_addresse: str, name: str = None):
+        """Erstellt einen neuen Kontakt und speichert ihn in der Datenbank."""
+        try:
+            with Session(self.engine) as session:
+                existing_contact = session.exec(select(Contact).where(Contact.email_address == email_addresse)).first()
+                if existing_contact:
+                    raise ValueError(f"Kontakt mit der E-Mail-Adresse {email_addresse} existiert bereits.")
 
-            contact = Contact(email_address=email_address, name=name)
-            session.add(contact)
-            session.commit()
-    except Exception as e:
-        raise RuntimeError(f"Fehler beim Erstellen des Kontakts: {str(e)}") #Runtime Error werfen
+                contact = Contact(email_address=email_addresse, name=name)
+                session.add(contact)
+                session.commit()
+                return contact
+        except Exception as e:
+            raise RuntimeError(f"Fehler beim Erstellen des Kontakts: {str(e)}") #Runtime Error werfen
 
 
     def get_contacts(self):
