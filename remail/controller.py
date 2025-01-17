@@ -1,3 +1,9 @@
+import sys,os
+# Add the Remail directory (parent folder) to sys.path
+remail_path = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+sys.path.append(remail_path)
+#for those who dont have the project installed as a package
+
 from sqlmodel import Session, select, create_engine
 from remail.database.models import (
     Email,
@@ -133,7 +139,10 @@ class EmailController:
                     select(Contact).where(Contact.email_address == recipient_email)
                 ).first()
                 if not contact:
-                    raise ValueError(f"Empfänger {recipient_email} nicht gefunden")
+                    #raise ValueError(f"Empfänger {recipient_email} nicht gefunden")
+                    self.create_contact(recipient_email)
+                    contact = session.exec(
+                    select(Contact).where(Contact.email_address == recipient_email)).first()
                 recipients.append(
                     EmailReception(contact=contact, kind=RecipientKind.to)
                 )
@@ -143,7 +152,10 @@ class EmailController:
                     select(Contact).where(Contact.email_address == recipient_email)
                 ).first()
                 if not contact:
-                    raise ValueError(f"Empfänger {recipient_email} nicht gefunden")
+                    #raise ValueError(f"Empfänger {recipient_email} nicht gefunden")
+                    self.create_contact(recipient_email)
+                    contact = session.exec(
+                    select(Contact).where(Contact.email_address == recipient_email)).first()
                 recipients.append(
                     EmailReception(contact=contact, kind=RecipientKind.cc)
                 )
@@ -153,7 +165,10 @@ class EmailController:
                     select(Contact).where(Contact.email_address == recipient_email)
                 ).first()
                 if not contact:
-                    raise ValueError(f"Empfänger {recipient_email} nicht gefunden")
+                    #raise ValueError(f"Empfänger {recipient_email} nicht gefunden")
+                    self.create_contact(recipient_email)
+                    contact = session.exec(
+                    select(Contact).where(Contact.email_address == recipient_email)).first()
                 recipients.append(
                     EmailReception(contact=contact, kind=RecipientKind.bcc)
                 )
@@ -277,9 +292,7 @@ class EmailController:
                 select(Contact).where(Contact.email_address == email_address)
             ).first()
             if existing_contact:
-                raise ValueError(
-                    f"Kontakt mit E-Mail {email_address} existiert bereits."
-                )
+                return existing_contact
 
             contact = Contact(email_address=email_address, name=name)
             session.add(contact)
@@ -302,10 +315,41 @@ class EmailController:
             return contact[0]
         else:
             return self.create_contact(email)
+
+    def get_contact_by_id(self, id: int) -> Contact:
+        """Gibt den Kontakt anhand der ID zurück"""
+        contacts=self.get_contacts()
+        contact = [con for con in contacts if con.id == id]
+        if len(contact) > 0:
+            return contact[0]
+        else:
+            return None
+    
+    def get_recipients(self, mail_id: int):
+        """Returns a list of all recipients of an email"""
+        #query: Select em.id, c.email_address  
+        # from database.main.email em inner join database.main.emailreception er on em.id=er.email_id inner join database.main.contact c on er.contact_id=c.id  
+        with Session(self.engine) as session:
+            contacts = session.exec(
+                select(Contact.email_address)
+            .join(EmailReception, EmailReception.email_id==EmailReception.contact_id)
+            .join(Email, EmailReception.email_id == Email.id)
+            .where(Email.id==mail_id)
+            )
+        return [Contact.email_address for Contact in contacts]
+
+
+
+
+    def get_full_email_data(self, mail: Email):
+        id = mail.id
+        message_id = mail.message_id
+        subject = mail.subject
+        body = mail.body
+        date = mail.date
+        urgency = mail.urgency
+
+        sender = self.get_contact_by_id(mail.sender_id)
         
 
 controller = EmailController()
-
-
-# ret = controller.create_email("yasin.arazay@gmail.com", ["recipient@gmail.com"], "Generic Subject", "HELLLO")
-# print(ret)

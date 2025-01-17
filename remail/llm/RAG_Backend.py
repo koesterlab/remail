@@ -1,6 +1,13 @@
 import chromadb as db
 import hashlib
 import os, sys
+
+
+# Add the Remail directory (parent folder) to sys.path
+remail_path = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+sys.path.append(remail_path)
+
+
 import requests
 from llama_cpp import Llama
 from llama_index.core import Settings, VectorStoreIndex, SimpleDirectoryReader, StorageContext
@@ -10,21 +17,7 @@ from pathlib import Path
 from llama_index.core.query_engine import RetrySourceQueryEngine
 from llama_index.core.evaluation import RelevancyEvaluator
 from llama_index.core.schema import Document
-from llama_index.readers.database import DatabaseReader
-from sqlmodel import Session, select, create_engine, SQLModel
-
-# Add the Remail directory (parent folder) to sys.path
-remail_path = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-sys.path.append(remail_path)
-
-from remail.database.models import (
-    Email,
-    Contact,
-    EmailReception,
-    RecipientKind,
-    Attachment,
-    User,
-)
+import controller
 
 class LLM(object):
     # for installing the model can be changed to any model later
@@ -43,38 +36,11 @@ class LLM(object):
     _db_path = "./remail/llm/db/chroma_db"
     _collection_name = "quickstart"
 
-    # Folder exists?
-    def ensure_directory_exists(self, directory):
-        if not os.path.exists(directory):
-            os.makedirs(directory)
-
-    def download_file(self, url, destination):
-        response = requests.get(url, stream=True)
-        if response.status_code == 200:
-            with open(destination, "wb") as file:
-                for chunk in response.iter_content(chunk_size=8192):
-                    file.write(chunk)
-        else:
-            raise Exception(f"Failed to download file: HTTP {response.status_code}")
-
-    def llm_installer(self):
-        # Ensure the target directory exists
-        self.ensure_directory_exists(self.TARGET_DIR)
-        destination_path = os.path.join(self.TARGET_DIR, self.MODEL_FILE)
-
-        # Download the model file
-        print(f"[INFO] Downloading {self.MODEL_FILE} to {destination_path}...")
-        try:
-            self.download_file(self.MODEL_URL, destination_path)
-            print(f"[INFO] Model file installed successfully at {destination_path}.")
-        except Exception as e:
-            print(f"[ERROR] Failed to download the file: {e}")
-
     def __init__(self):
         # Look up if a llm already exists
         destination_path = os.path.join(self.TARGET_DIR, self.MODEL_FILE)
         if not os.path.exists(destination_path):
-            self.llm_installer()
+            self._llm_installer()
 
         # Disable OpenAI usage by explicitly! Never remove this
         Settings.llm = None
@@ -183,6 +149,54 @@ class LLM(object):
                     print(f"Warning: Could not read file {file_path}: {str(e)}")
                     continue
         return hash_obj.hexdigest()
+
+        # Folder exists?
+    def _ensure_directory_exists(self, directory):
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+
+    def _download_file(self, url, destination):
+        response = requests.get(url, stream=True)
+        if response.status_code == 200:
+            with open(destination, "wb") as file:
+                for chunk in response.iter_content(chunk_size=8192):
+                    file.write(chunk)
+        else:
+            raise Exception(f"Failed to download file: HTTP {response.status_code}")
+
+    def _llm_installer(self):
+        # Ensure the target directory exists
+        self._ensure_directory_exists(self.TARGET_DIR)
+        destination_path = os.path.join(self.TARGET_DIR, self.MODEL_FILE)
+
+        # Download the model file
+        print(f"[INFO] Downloading {self.MODEL_FILE} to {destination_path}...")
+        try:
+            self._download_file(self.MODEL_URL, destination_path)
+            print(f"[INFO] Model file installed successfully at {destination_path}.")
+        except Exception as e:
+            print(f"[ERROR] Failed to download the file: {e}")
+
+    def _db_to_nodes(self):
+        emails = controller.controller.get_emails()
+        docstore = []
+        for mail in emails:
+
+            sender= controller.controller.get_contact_by_id(mail.sender_id)
+
+            
+            #define document
+            doc = Document(
+                text=mail.body,
+                metadata={
+                    "subject"=mail.subject,
+                    "time"=mail.date,
+                    "sender"=sender.email_address,
+                    "extra_recipients"=
+                }
+            )
+
+
 
     def prompt(self, prompt: str) -> str:
         """Use this for prompting. Takes a string as the input and returns the response as a string"""

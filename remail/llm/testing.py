@@ -3,12 +3,12 @@ import sys,os
 remail_path = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.append(remail_path)
 
-import RAG_Backend
+#import RAG_Backend
 import controller
 
-ec = controller.EmailController()
-ec.create_email(1,"abc",["123","def"],"test","Hello World!",[None], None, None)
-print(ec.get_emails())
+emails = controller.controller.get_emails()
+for mail in emails:
+    
 
 #llm= RAG_Backend.LLM()
 #llm._connectToDb()
