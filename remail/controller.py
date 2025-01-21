@@ -4,13 +4,14 @@ from datetime import datetime
 import duckdb
 import logging
 from sqlmodel import SQLModel
+from remail.database.setup import init_db
+
 
 
 class EmailController:
     def __init__(self):
         # Connect to the DuckDB database (will create a file-based database if it doesn't exist)
-        conn = duckdb.connect('database.db')
-        conn.close()
+        init_db() #init_db() aus remail/setup.py
 
         engine = create_engine("duckdb:///database.db")
         SQLModel.metadata.create_all(engine)
@@ -110,15 +111,15 @@ class EmailController:
             session.delete(email)
             session.commit()
     
-    def create_contact(self, email_addresse: str, name: str = None):
+    def create_contact(self, email_address: str, name: str = None):
         """Erstellt einen neuen Kontakt und speichert ihn in der Datenbank."""
         try:
             with Session(self.engine) as session:
-                existing_contact = session.exec(select(Contact).where(Contact.email_address == email_addresse)).first()
+                existing_contact = session.exec(select(Contact).where(Contact.email_address == email_address)).first()
                 if existing_contact:
-                    raise ValueError(f"Kontakt mit der E-Mail-Adresse {email_addresse} existiert bereits.")
+                    raise ValueError(f"Kontakt mit der E-Mail-Adresse {email_address} existiert bereits.")
 
-                contact = Contact(email_address=email_addresse, name=name)
+                contact = Contact(email_address=email_address, name=name)
                 session.add(contact)
                 session.commit()
                 return contact

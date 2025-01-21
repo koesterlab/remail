@@ -100,11 +100,22 @@ def add_email_form():
 
 if "email_sent" in st.session_state and st.session_state.pop(
     "email_sent"
-):  # Rerun-Trigger
+):  
     st.rerun()
 
 if "cancel_email" in st.session_state and st.session_state.pop("cancel_email"):
     st.rerun()
+
+
+# Kontakte beim Laden der Seite abrufen
+if "contacts" not in st.session_state:
+    try:
+        # Lade Kontakte aus der Datenbank
+        db_contacts = controller.get_contacts()
+        # Speichern der Kontakte im Session-Status
+        st.session_state.contacts = {contact.email_address: contact.name for contact in db_contacts}
+    except Exception as e:
+        st.error(f"Error fetching contacts: {str(e)}")
 
 
 # "New Contact"
@@ -121,18 +132,24 @@ def new_contact_form():
                 full_name = f"{contact_name} {contact_surname}"
                 try:
                     # Speichern des neuen Kontakts in der Datenbank
-                    controller.create_contact(email_address=email_address, name=full_name)
+                    contact = controller.create_contact(email_address=email_address, name=full_name)
+                    
+                    # Kontakte nach dem Erstellen erneut laden und in Session speichern
+                    db_contacts = controller.get_contacts()
+                    st.session_state.contacts = {contact.email_address: contact.name for contact in db_contacts}
+                    
                     st.success(f"Created contact {full_name} with email {email_address}")
                     st.rerun() # Wichtig für die Aktualisierung der Kontaktliste
                 except ValueError as e:
                     st.error(str(e))
-                except RuntimeError as e: # Fange Runtime Errors ab
-                    st.error(f"Ein unerwarteter Fehler ist aufgetreten: {e}")
+                except RuntimeError as e:  # Fange Runtime Errors ab
+                    st.error(f"An unexpected error has occurred: {e}")
             else:
                 st.error("Please fill out all required fields.")
     with col2:
-        if st.button("Cancel", key="cancel_contact_button"):  # Eindeutige Keys
+        if st.button("Cancel", key="cancel_contact_button"):
             st.rerun()
+
 
 
 def send_message_to_sender(sender, message):
@@ -177,40 +194,36 @@ with col1:
     )
 
     # Sender sortieren basierend auf Filter
-    senders = list(emails_data.keys())
+    contacts = list(st.session_state.contacts.items()) 
     if st.session_state.filter_option == "Urgency":
-        senders = sorted(
-            senders,
-            key=lambda sender: max(
-                (msg.get("urgency", 0) for msg in emails_data[sender]), default=0
-            ),
+        contacts = sorted(
+            contacts,
+            key=lambda contact: random.randint(1, 5), 
             reverse=True,
         )
     elif st.session_state.filter_option == "Date":
-        senders = sorted(
-            senders,
-            key=lambda sender: max(
-                (msg.get("date", "") for msg in emails_data[sender]), default=""
-            ),
-            reverse=True,
+        contacts = sorted(
+            contacts,
+            key=lambda contact: time.time(), reverse=True 
         )
 
-    # Sender filtern basierend auf Suchanfrage
+    # Kontakte filtern basierend auf Suchanfrage
     search_query = st.session_state.search_query.lower()
     if search_query:
-        senders = [sender for sender in senders if search_query in sender.lower()]
+        contacts=[
+            contact for contact in contacts if search_query in contact[0].lower() or search_query in contact[1].lower()]
 
-    # Sender-Liste anzeigen
-    for sender in senders:
-        if st.button(sender, key=f"sender_button_{sender}"):
-            st.session_state.selected_sender = sender
+    # Kontakte anzeigen
+    for email, name in contacts:
+        if st.button(name, key=f"contact_button_{email}"):
+            st.session_state.selected_sender = email
 
 
 with col2:
     selected_sender = st.session_state.get("selected_sender")
 
     if selected_sender:
-        st.subheader(f"Chat mit {selected_sender}")
+        st.subheader(f"Chat mit {st.session_state.contacts[selected_sender]}")
         chat_history = st.session_state.chat_history.get(selected_sender, [])
 
         # Initialisiere den Zeitstempel für die letzte Nachricht, falls noch nicht vorhanden
@@ -221,9 +234,7 @@ with col2:
 
         # Simuliere das Eintreffen neuer Nachrichten
         time_diff = time.time() - st.session_state.last_message_time[selected_sender]
-        if time_diff > random.randint(
-            3, 7
-        ):  # Zufälliges Intervall zwischen 3 und 7 Sekunden
+        if time_diff > random.randint(3, 7):  # Zufälliges Intervall zwischen 3 und 7 Sekunden
             new_message = f"Automatische Nachricht um {time.strftime('%H:%M:%S')}"
             chat_history.append({"type": "received", "message": new_message})
             st.session_state.last_message_time[selected_sender] = time.time()
@@ -272,9 +283,7 @@ with col2:
             "Datei anhängen", key=f"file_uploader_{selected_sender}"
         )
 
-        if st.button(
-            f"Senden an {selected_sender}", key=f"send_message_{selected_sender}"
-        ):
+        if st.button(f"Senden an {selected_sender}", key=f"send_message_{selected_sender}"):
             # Sicherstellen, dass entweder eine Nachricht oder eine Datei vorhanden ist
             if new_message.strip() or uploaded_file:
                 message_data = {"type": "sent"}
@@ -291,9 +300,7 @@ with col2:
                     st.write(f"Datei '{uploaded_file.name}' wurde angehängt.")
 
                 # Chatverlauf aktualisieren
-                st.session_state.chat_history.setdefault(selected_sender, []).append(
-                    message_data
-                )
+                st.session_state.chat_history.setdefault(selected_sender, []).append(message_data)
                 st.rerun()
             else:
                 st.error("Bitte gib eine Nachricht ein oder hänge eine Datei an.")
