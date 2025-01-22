@@ -295,6 +295,8 @@ class EmailController:
             session.add(email)
             session.commit()
 
+
+    #TODO sync with email API
     def delete_email(self, email_id: int):
         """Löscht eine E-Mail basierend auf ihrer ID."""
         with Session(self.engine) as session:
@@ -397,7 +399,14 @@ class EmailController:
 
         #TODO @someone_please how to handle attachments? Are they even a thing rn?
 
-        return [id, message_id, subject, body, date, urgency, sender, recipients]
+        return {"id":id,
+                "message_id":message_id,
+                "subject":subject,
+                "body":body,
+                "date":date,
+                "urgency":urgency,
+                "sender":sender,
+                "recipients":recipients}
 
         
 
