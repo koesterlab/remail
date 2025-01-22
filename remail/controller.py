@@ -22,6 +22,7 @@ from remail.email_api.service import ImapProtocol, ExchangeProtocol, ProtocolTem
 import remail.email_api.email_errors as errors
 import keyring
 from tzlocal import get_localzone
+from pytz import timezone
 
 
 def error_handler(func):
@@ -54,6 +55,11 @@ class EmailController:
         logger = logging.getLogger(__name__)
         
         logger.info("Datenbank initialisiert")
+
+    def has_user(self):
+        with Session(self.engine) as session:
+            users = session.exec(select(User)).all()
+            return len(users) > 0
 
     @error_handler
     def refresh(self):
@@ -192,7 +198,7 @@ class EmailController:
                 body=body,
                 attachments=attachments,
                 recipients=recipients,
-                date=datetime.now(tz = get_localzone()) if date is None else date,
+                date=datetime.now(tz = get_localzone()) if date is None else date.astimezone(get_localzone()),
                 urgency=urgency,
             )
             
@@ -295,6 +301,21 @@ class EmailController:
             email = session.get(Email, email_id)
             if not email:
                 raise ValueError("E-Mail nicht gefunden")
+        
+            recs = email.recipients
+            for rec in recs:
+                session.delete(rec)
+
+            atts = email.attachments
+            for att in atts:
+                session.delete(att)
+            session.commit()
+        
+        with Session(self.engine) as session:
+            email = session.get(Email, email_id)
+            if not email:
+                raise ValueError("E-Mail nicht gefunden")
+            
             session.delete(email)
             session.commit()
 
@@ -312,6 +333,15 @@ class EmailController:
             session.commit()
             return contact
             # self.logger.info(f"Kontakt erstellt: {name} ({email_address})")
+            
+    def change_name_Contact(self,email_address: str,name: str):
+        """Change the name of a Contact with a specific email_address"""
+        with Session(self.engine) as session:
+            contact = session.exec(select(Contact).where(Contact.email_address == email_address)).first()
+            contact.name = name
+            session.commit()
+            session.refresh(contact)
+
 
     def get_contacts(self):
         """Gibt alle Kontakte aus."""

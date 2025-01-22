@@ -149,9 +149,12 @@ class ImapProtocol(ProtocolTemplate):
     def logged_in(self) -> bool:
         return self._logged_in
 
+    @error_handler
     def login(self):
         if self.logged_in:
             return
+        if self.user_password is None:
+            raise ee.InvalidLoginData() from None
         try:
             self.IMAP.login(self.user_username, self.user_password)
             self._logged_in = True
@@ -160,6 +163,7 @@ class ImapProtocol(ProtocolTemplate):
         except Exception as e:
             raise e
 
+    @error_handler
     def logout(self):
         self.IMAP.logout()
         self.user_password = None
@@ -266,7 +270,7 @@ class ImapProtocol(ProtocolTemplate):
                 email_message = email.message_from_bytes(message_data[b"RFC822"])
                 if date is not None and date > parsedate_to_datetime(
                     email_message["Date"]
-                ):
+                ).astimezone(timezone("UTC")):
                     continue
                 attachments_file_names = []
                 html_parts = []
@@ -324,7 +328,7 @@ class ImapProtocol(ProtocolTemplate):
                         to_recipients=[addr  for _,addr in getaddresses([email_message["To"]])if addr and addr.lower() != "none"],
                         cc_recipients=[addr  for _,addr in getaddresses([email_message["Cc"]])if addr and addr.lower() != "none"],
                         bcc_recipients=[addr  for _,addr in getaddresses([email_message["Bcc"]])if addr and addr.lower() != "none"],
-                        date=parsedate_to_datetime(email_message["Date"]),
+                        date=parsedate_to_datetime(email_message["Date"]).astimezone(timezone("UTC")),
                         controller = self.controller,
                         html_files=html_parts,
                     )
@@ -501,6 +505,10 @@ class ExchangeProtocol(ProtocolTemplate):
         return list(set(message_ids) - set(server_uids))
 
     def _get_items(self, start_date: datetime = None, message_id=""):
+        
+        if start_date:
+            start_date = start_date.astimezone(UTC)
+
         email_folders = [
             f
             for f in self.acc.root.walk()
