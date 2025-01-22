@@ -50,10 +50,10 @@ class EmailController:
 
         self.refresh() # kann etwas dauern
 
-        # logging.basicConfig(level=logging.INFO)
-        # logger = logging.getLogger(__name__)
-        #
-        # logger.info("Datenbank initialisiert")
+        logging.basicConfig(level=logging.INFO)
+        logger = logging.getLogger(__name__)
+        
+        logger.info("Datenbank initialisiert")
 
     @error_handler
     def refresh(self):
@@ -131,7 +131,8 @@ class EmailController:
                 select(Contact).where(Contact.email_address == sender_email)
             ).first()
             if not sender:
-                raise ValueError("Absender nicht gefunden")
+                #raise ValueError("Absender nicht gefunden") #why?
+                self.logger.info(f"Absender nicht gefunden: {sender_email}")
 
             recipients = []
             for recipient_email in recipient_emails_to:
@@ -139,10 +140,14 @@ class EmailController:
                     select(Contact).where(Contact.email_address == recipient_email)
                 ).first()
                 if not contact:
-                    #raise ValueError(f"Empfänger {recipient_email} nicht gefunden")
-                    self.create_contact(recipient_email)
-                    contact = session.exec(
-                    select(Contact).where(Contact.email_address == recipient_email)).first()
+                    #raise ValueError(f"Empfänger {recipient_email} nicht gefunden") #like for real why terminate the program if email not in contact list
+
+                    #bandaid implementation:
+                    #self.create_contact(recipient_email)
+                    #contact = self.get_contact(recipient_email)
+
+                    self.logger.info(f"Empfänger nicht gefunden: {recipient_email}")
+
                 recipients.append(
                     EmailReception(contact=contact, kind=RecipientKind.to)
                 )
@@ -152,10 +157,13 @@ class EmailController:
                     select(Contact).where(Contact.email_address == recipient_email)
                 ).first()
                 if not contact:
-                    #raise ValueError(f"Empfänger {recipient_email} nicht gefunden")
-                    self.create_contact(recipient_email)
-                    contact = session.exec(
-                    select(Contact).where(Contact.email_address == recipient_email)).first()
+                    #raise ValueError(f"Empfänger {recipient_email} nicht gefunden") #please help
+
+                    #bandaid implementation:
+                    #self.create_contact(recipient_email)
+                    #contact = self.get_contact(recipient_email)
+
+                    self.logger.info(f"CC Empfänger nicht gefunden: {recipient_email}")
                 recipients.append(
                     EmailReception(contact=contact, kind=RecipientKind.cc)
                 )
@@ -165,10 +173,13 @@ class EmailController:
                     select(Contact).where(Contact.email_address == recipient_email)
                 ).first()
                 if not contact:
-                    #raise ValueError(f"Empfänger {recipient_email} nicht gefunden")
-                    self.create_contact(recipient_email)
-                    contact = session.exec(
-                    select(Contact).where(Contact.email_address == recipient_email)).first()
+                    #raise ValueError(f"Empfänger {recipient_email} nicht gefunden") #i can't take it anymore
+
+                    #bandaid implementation:
+                    #self.create_contact(recipient_email)
+                    #contact = self.get_contact(recipient_email)
+
+                    self.logger.info(f"BCC Empfänger nicht gefunden: {recipient_email}")
                 recipients.append(
                     EmailReception(contact=contact, kind=RecipientKind.bcc)
                 )
@@ -266,6 +277,8 @@ class EmailController:
             # self.logger.info(f"{len(emails)} E-Mails gefunden.")
             return emails
 
+
+    #???
     def update_email_subject(self, email_id: int, new_subject: str):
         """Aktualisiert den Betreff einer E-Mail."""
         with Session(self.engine) as session:
@@ -330,13 +343,13 @@ class EmailController:
         #query: Select em.id, c.email_address  
         # from database.main.email em inner join database.main.emailreception er on em.id=er.email_id inner join database.main.contact c on er.contact_id=c.id  
         with Session(self.engine) as session:
-            contacts = session.exec(
-                select(Contact.email_address)
-            .join(EmailReception, EmailReception.email_id==EmailReception.contact_id)
-            .join(Email, EmailReception.email_id == Email.id)
-            .where(Email.id==mail_id)
-            )
-        return [Contact.email_address for Contact in contacts]
+            query = (select(Contact)
+                     .join(EmailReception, Contact.id==EmailReception.contact_id)
+                     .join(Email, EmailReception.email_id == Email.id)
+                     .where(Email.id==mail_id)
+                    )
+            contacts = session.exec(query).all()
+        return contacts
 
 
 
@@ -349,7 +362,13 @@ class EmailController:
         date = mail.date
         urgency = mail.urgency
 
-        sender = self.get_contact_by_id(mail.sender_id)
+        sender = self.get_contact_by_id(mail.sender_id).email_address
+        recipients = [contact.email_address for contact in self.get_recipients(id)]
+
+        #TODO @someone_please how to handle attachments? Are they even a thing rn?
+
+        return [id, message_id, subject, body, date, urgency, sender, recipients]
+
         
 
 controller = EmailController()
