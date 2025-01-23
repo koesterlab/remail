@@ -318,9 +318,11 @@ class ImapProtocol(ProtocolTemplate):
                 
                 x = getaddresses([email_message["From"]])
                 saddr = x[0][1]
+                sname = x[0][0]
                 listofMails += [
                     create_email(
                         uid=email_message["Message-Id"],
+                        name = sname,
                         sender= saddr,
                         subject=email_message["Subject"],
                         body=body,
@@ -560,6 +562,7 @@ class ExchangeProtocol(ProtocolTemplate):
         return [
             create_email(
                 uid=item.message_id,
+                name = item.sender.name,
                 sender=item.sender.email_address,
                 subject=item.subject,
                 body=body,
@@ -585,6 +588,7 @@ class ExchangeProtocol(ProtocolTemplate):
 
 def create_email(
     uid: str,
+    name: str,
     sender: str,
     subject: str,
     body: str,

@@ -293,21 +293,24 @@ class EmailController:
 
     def create_contact(self, email_address: str, name: str = None):
         """Erstellt einen neuen Kontakt."""
-        with Session(self.engine) as session:
-            existing_contact = session.exec(
-                select(Contact).where(Contact.email_address == email_address)
-            ).first()
-            if existing_contact:
-                raise ValueError(
-                    f"Kontakt mit E-Mail {email_address} existiert bereits."
-                )
+        try:
+            with Session(self.engine) as session:
+                existing_contact = session.exec(
+                    select(Contact).where(Contact.email_address == email_address)
+                ).first()
+                if existing_contact:
+                    raise ValueError(
+                        f"Kontakt mit E-Mail {email_address} existiert bereits."
+                    )
 
-            contact = Contact(email_address=email_address, name=name)
-            session.add(contact)
-            session.commit()
-            return contact
+                contact = Contact(email_address=email_address, name=name)
+                session.add(contact)
+                session.commit()
+                return contact
+        except Exception as e:
+            raise e
             # self.logger.info(f"Kontakt erstellt: {name} ({email_address})")
-            
+
     def change_name_Contact(self,email_address: str,name: str):
         """Change the name of a Contact with a specific email_address"""
         with Session(self.engine) as session:
@@ -324,14 +327,14 @@ class EmailController:
             # self.logger.info(f"{len(contacts)} Kontakte gefunden.")
             return contacts
 
-    def get_contact(self, email: str) -> Contact:
+    def get_contact(self, email: str, name: str = None) -> Contact:
         """Gibt den Kontakt mit der Emailadresse zurück oder erstellt einen neuen"""
         contacts = self.get_contacts()
         contact = [con for con in contacts if con.email_address == email]
         if len(contact) > 0:
             return contact[0]
         else:
-            return self.create_contact(email)
+            return self.create_contact(email, name)
         
 
 controller = EmailController()
