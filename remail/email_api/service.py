@@ -295,7 +295,7 @@ class ImapProtocol(ProtocolTemplate):
                                     )
                                     attachments_file_names += [
                                         safe_file(
-                                            filename, part.get_payload(decode=True)
+                                            filename, part.get_payload(decode=True), email_message["Message-Id"]
                                         )
                                     ]
 
@@ -562,7 +562,7 @@ class ExchangeProtocol(ProtocolTemplate):
         attachments = []
         for attachment in item.attachments:
             if isinstance(attachment, FileAttachment):
-                attachments += [safe_file(attachment.name, attachment.content)]
+                attachments += [safe_file(attachment.name, attachment.content, item.message_id)]
 
         ews_datetime_str = item.datetime_received.astimezone()
         parsed_datetime = datetime.fromisoformat(
@@ -652,18 +652,23 @@ def create_email(
     return email
 
 
-def safe_file(filename: str, content: bytes) -> str:
-    ordner_path = "/remail/database/attachments"
-    max_size = 10 * 1024 * 1024  # muss noch von wo anders bestimmt werden 10 MB
+def safe_file(filename: str, content: bytes, message_id: str) -> str:
+    ordner_path = os.path.abspath(os.path.join("remail","database","attachments"))
+    message_path = os.path.join(ordner_path, secure_filename(message_id).replace(".", "_"))
+    max_size = 200 * 1024 * 1024  # muss noch von wo anders bestimmt werden 10 MB
     if len(content) > max_size:
         raise BufferError(f"File size exceeds limit of {max_size} bytes")
     if not os.path.exists(ordner_path):
         os.mkdir(ordner_path)
+    if not os.path.exists(message_path):
+        os.mkdir(message_path)
 
-    safe_filename = secure_filename(filename)
+    name, ending = os.path.splitext(filename)
+    no_dots = name.replace(".", "")[:50] + ending
+    safe_filename = secure_filename(no_dots.strip())
     if not safe_filename:
         raise ValueError("Invalid filename")
-    filepath = os.path.join(ordner_path, safe_filename)
+    filepath = os.path.join(message_path, safe_filename)
     try:
         with open(filepath, "wb") as f:
             f.write(content)
