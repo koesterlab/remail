@@ -653,13 +653,17 @@ def create_email(
 
 
 def safe_file(filename: str, content: bytes) -> str:
+    ordner_path = "/remail/database/attachments"
     max_size = 10 * 1024 * 1024  # muss noch von wo anders bestimmt werden 10 MB
     if len(content) > max_size:
         raise BufferError(f"File size exceeds limit of {max_size} bytes")
+    if not os.path.exists(ordner_path):
+        os.mkdir(ordner_path)
+
     safe_filename = secure_filename(filename)
     if not safe_filename:
         raise ValueError("Invalid filename")
-    filepath = os.path.join("/remail/database/attachments/", safe_filename)
+    filepath = os.path.join(ordner_path, safe_filename)
     try:
         with open(filepath, "wb") as f:
             f.write(content)
