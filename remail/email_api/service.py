@@ -570,7 +570,6 @@ class ExchangeProtocol(ProtocolTemplate):
         parsed_datetime = datetime.fromisoformat(
             ews_datetime_str.ewsformat()
         ).astimezone(timezone("UTC"))
-        print(parsed_datetime, datetime.now())
 
         body = item.text_body
         if item.body != body:

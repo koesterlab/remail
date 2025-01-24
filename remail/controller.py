@@ -59,7 +59,6 @@ class EmailController:
         """Aktualisiert alle E-Mails in der Datenbank."""
         with Session(self.engine) as session:
             users = session.exec(select(User)).all()
-            print(users)
             accounts = []
             for user in users:
                 password = keyring.get_password("remail/Account", user.email)
@@ -133,7 +132,6 @@ class EmailController:
             # self.logger.info(f"Benutzer erstellt: {name} ({email})")
 
     def _update_user_last_refresh(self, email: str):
-        print("updating", email)
         """updates the date time of the last refresh to the current time"""
         with Session(self.engine) as session:
             user = session.exec(select(User).where(User.email == email)).first()
