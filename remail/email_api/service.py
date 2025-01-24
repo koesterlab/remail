@@ -320,28 +320,26 @@ class ImapProtocol(ProtocolTemplate):
 
                 x = getaddresses([email_message["From"]])
                 saddr = x[0][1]
-                sname = x[0][0]
                 listofMails += [
                     create_email(
                         uid=email_message["Message-Id"],
-                        name=sname,
                         sender=saddr,
                         subject=email_message["Subject"],
                         body=body,
                         attachments=attachments_file_names,
                         to_recipients=[
-                            addr
-                            for _, addr in getaddresses([email_message["To"]])
+                            (name,addr)
+                            for name, addr in getaddresses([email_message["To"]])
                             if addr and addr.lower() != "none"
                         ],
                         cc_recipients=[
-                            addr
-                            for _, addr in getaddresses([email_message["Cc"]])
+                            (name,addr)
+                            for name, addr in getaddresses([email_message["Cc"]])
                             if addr and addr.lower() != "none"
                         ],
                         bcc_recipients=[
-                            addr
-                            for _, addr in getaddresses([email_message["Bcc"]])
+                            (name,addr)
+                            for name, addr in getaddresses([email_message["Bcc"]])
                             if addr and addr.lower() != "none"
                         ],
                         date=parsedate_to_datetime(email_message["Date"]).astimezone(
@@ -586,13 +584,13 @@ class ExchangeProtocol(ProtocolTemplate):
                 subject=item.subject,
                 body=body,
                 attachments=attachments,
-                to_recipients=[i.email_address for i in item.to_recipients],
+                to_recipients=[(i.name,i.email_address) for i in item.to_recipients],
                 cc_recipients=[
-                    item.email_address
+                    (item.name,item.email_address)
                     for item in (item.cc_recipients if item.cc_recipients else [])
                 ],
                 bcc_recipients=[
-                    item.email_address
+                    (item.name,item.email_address)
                     for item in (item.bcc_recipients if item.bcc_recipients else [])
                 ],
                 date=parsed_datetime,
@@ -607,7 +605,6 @@ class ExchangeProtocol(ProtocolTemplate):
 
 def create_email(
     uid: str,
-    name: str,
     sender: str,
     subject: str,
     body: str,
@@ -621,20 +618,20 @@ def create_email(
 ) -> Email:
     sender_contact = controller.get_contact(sender)
     recipients = [
-        EmailReception(contact=controller.get_contact(recipient), kind=RecipientKind.to)
+        EmailReception(contact=controller.get_contact(recipient[1],recipient[0]), kind=RecipientKind.to)
         for recipient in to_recipients
     ]
     if cc_recipients:
         recipients += [
             EmailReception(
-                contact=controller.get_contact(recipient), kind=RecipientKind.cc
+                contact=controller.get_contact(recipient[1],recipient[0]), kind=RecipientKind.cc
             )
             for recipient in cc_recipients
         ]
     if bcc_recipients:
         recipients += [
             EmailReception(
-                contact=controller.get_contact(recipient), kind=RecipientKind.bcc
+                contact=controller.get_contact(recipient[1],recipient[0]), kind=RecipientKind.bcc
             )
             for recipient in bcc_recipients
         ]
