@@ -58,9 +58,11 @@ class Email(SQLModel, table=True):
     date: datetime
     urgency: Optional[int]
 
+
 class Protocol(Enum):
     IMAP = auto()
     EXCHANGE = auto()
+
 
 class User(SQLModel, table=True):
     id: Optional[int] = id_field("email")
