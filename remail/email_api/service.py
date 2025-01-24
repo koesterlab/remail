@@ -138,8 +138,12 @@ class ProtocolTemplate(ABC):
 
 class ImapProtocol(ProtocolTemplate):
     def __init__(
-        self, email: str, password: str, host: str, controller: "EmailController" # type: ignore
-    ):  
+        self,
+        email: str,
+        password: str,
+        host: str,
+        controller: "EmailController",  # type: ignore
+    ):
         self.user_username = email
         self.user_password = password
         self.host = host
@@ -295,7 +299,9 @@ class ImapProtocol(ProtocolTemplate):
                                     )
                                     attachments_file_names += [
                                         safe_file(
-                                            filename, part.get_payload(decode=True), email_message["Message-Id"]
+                                            filename,
+                                            part.get_payload(decode=True),
+                                            email_message["Message-Id"],
                                         )
                                     ]
 
@@ -328,17 +334,17 @@ class ImapProtocol(ProtocolTemplate):
                         body=body,
                         attachments=attachments_file_names,
                         to_recipients=[
-                            (name,addr)
+                            (name, addr)
                             for name, addr in getaddresses([email_message["To"]])
                             if addr and addr.lower() != "none"
                         ],
                         cc_recipients=[
-                            (name,addr)
+                            (name, addr)
                             for name, addr in getaddresses([email_message["Cc"]])
                             if addr and addr.lower() != "none"
                         ],
                         bcc_recipients=[
-                            (name,addr)
+                            (name, addr)
                             for name, addr in getaddresses([email_message["Bcc"]])
                             if addr and addr.lower() != "none"
                         ],
@@ -428,8 +434,12 @@ class ImapProtocol(ProtocolTemplate):
 
 class ExchangeProtocol(ProtocolTemplate):
     def __init__(
-        self, email: str, password: str, username: str, controller: "EmailController" # type: ignore
-    ):  
+        self,
+        email: str,
+        password: str,
+        username: str,
+        controller: "EmailController",  # type: ignore
+    ):
         self.cred = None
         self.acc = None
         self._logged_in = False
@@ -562,7 +572,9 @@ class ExchangeProtocol(ProtocolTemplate):
         attachments = []
         for attachment in item.attachments:
             if isinstance(attachment, FileAttachment):
-                attachments += [safe_file(attachment.name, attachment.content, item.message_id)]
+                attachments += [
+                    safe_file(attachment.name, attachment.content, item.message_id)
+                ]
 
         ews_datetime_str = item.datetime_received.astimezone()
         parsed_datetime = datetime.fromisoformat(
@@ -582,13 +594,13 @@ class ExchangeProtocol(ProtocolTemplate):
                 subject=item.subject,
                 body=body,
                 attachments=attachments,
-                to_recipients=[(i.name,i.email_address) for i in item.to_recipients],
+                to_recipients=[(i.name, i.email_address) for i in item.to_recipients],
                 cc_recipients=[
-                    (item.name,item.email_address)
+                    (item.name, item.email_address)
                     for item in (item.cc_recipients if item.cc_recipients else [])
                 ],
                 bcc_recipients=[
-                    (item.name,item.email_address)
+                    (item.name, item.email_address)
                     for item in (item.bcc_recipients if item.bcc_recipients else [])
                 ],
                 date=parsed_datetime,
@@ -616,20 +628,25 @@ def create_email(
 ) -> Email:
     sender_contact = controller.get_contact(sender)
     recipients = [
-        EmailReception(contact=controller.get_contact(recipient[1],recipient[0]), kind=RecipientKind.to)
+        EmailReception(
+            contact=controller.get_contact(recipient[1], recipient[0]),
+            kind=RecipientKind.to,
+        )
         for recipient in to_recipients
     ]
     if cc_recipients:
         recipients += [
             EmailReception(
-                contact=controller.get_contact(recipient[1],recipient[0]), kind=RecipientKind.cc
+                contact=controller.get_contact(recipient[1], recipient[0]),
+                kind=RecipientKind.cc,
             )
             for recipient in cc_recipients
         ]
     if bcc_recipients:
         recipients += [
             EmailReception(
-                contact=controller.get_contact(recipient[1],recipient[0]), kind=RecipientKind.bcc
+                contact=controller.get_contact(recipient[1], recipient[0]),
+                kind=RecipientKind.bcc,
             )
             for recipient in bcc_recipients
         ]
@@ -653,8 +670,10 @@ def create_email(
 
 
 def safe_file(filename: str, content: bytes, message_id: str) -> str:
-    ordner_path = os.path.abspath(os.path.join("remail","database","attachments"))
-    message_path = os.path.join(ordner_path, secure_filename(message_id).replace(".", "_"))
+    ordner_path = os.path.abspath(os.path.join("remail", "database", "attachments"))
+    message_path = os.path.join(
+        ordner_path, secure_filename(message_id).replace(".", "_")
+    )
     max_size = 200 * 1024 * 1024  # muss noch von wo anders bestimmt werden 10 MB
     if len(content) > max_size:
         raise BufferError(f"File size exceeds limit of {max_size} bytes")

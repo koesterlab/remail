@@ -49,9 +49,8 @@ class EmailController:
 
         self.refresh()  # kann etwas dauern
 
-
     def has_user(self):
-        with Session(self.engine) as session:        
+        with Session(self.engine) as session:
             return session.exec(select(User).limit(1)).first() is not None
 
     @error_handler
@@ -354,9 +353,7 @@ class EmailController:
                 select(Contact).where(Contact.email_address == email_address)
             ).first()
             if not contact:
-                raise ValueError(
-                        f"Kontakt mit E-Mail {email_address} existiert nicht."
-                    )
+                raise ValueError(f"Kontakt mit E-Mail {email_address} existiert nicht.")
             contact.name = name
             session.commit()
             session.refresh(contact)
@@ -379,4 +376,3 @@ class EmailController:
 
 
 controller = EmailController()
-
