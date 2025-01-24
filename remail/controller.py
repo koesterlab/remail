@@ -50,10 +50,6 @@ class EmailController:
 
         self.refresh()  # kann etwas dauern
 
-        # logging.basicConfig(level=logging.INFO)
-        # logger = logging.getLogger(__name__)
-        #
-        # logger.info("Datenbank initialisiert")
 
     def has_user(self):
         with Session(self.engine) as session:
@@ -241,7 +237,6 @@ class EmailController:
 
             session.add(email)
             session.commit()
-            # self.logger.info(f"E-Mail erstellt: {subject} von {sender_email}")
 
     def safe_email(self, list_of_mails: list[Email]):
         """Speichert die E-Mail Objekte aus dem Email_Api Modul"""
@@ -301,7 +296,6 @@ class EmailController:
                     )
                 )
             emails = session.exec(query).all()
-            # self.logger.info(f"{len(emails)} E-Mails gefunden.")
             return emails
 
     def update_email_subject(self, email_id: int, new_subject: str):
@@ -356,7 +350,6 @@ class EmailController:
                 return contact
         except Exception as e:
             raise e
-            # self.logger.info(f"Kontakt erstellt: {name} ({email_address})")
 
     def change_name_Contact(self, email_address: str, name: str):
         """Change the name of a Contact with a specific email_address"""
@@ -364,6 +357,10 @@ class EmailController:
             contact = session.exec(
                 select(Contact).where(Contact.email_address == email_address)
             ).first()
+            if not contact:
+                raise ValueError(
+                    f"Kontakt mit E-Mail {email_address} existiert nicht."
+                    )
             contact.name = name
             session.commit()
             session.refresh(contact)
@@ -387,6 +384,3 @@ class EmailController:
 
 controller = EmailController()
 
-
-# ret = controller.create_email("yasin.arazay@gmail.com", ["recipient@gmail.com"], "Generic Subject", "HELLLO")
-# print(ret)
