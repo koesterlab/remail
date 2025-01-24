@@ -391,11 +391,16 @@ class EmailController:
         message_id = mail.message_id
         subject = mail.subject
         body = mail.body
-        date = mail.date
+        date = mail.date.strftime("%Y-%m-%d %H:%M:%S")
         urgency = mail.urgency
 
         sender = self.get_contact_by_id(mail.sender_id).email_address
         recipients = [contact.email_address for contact in self.get_recipients(id)]
+<<<<<<< HEAD
+=======
+        recipients_str = ", ".join(recipients)
+
+>>>>>>> b2a25b61c4d17eb3d232f34a5f73c344046c32ea
         #TODO @someone_please how to handle attachments? Are they even a thing rn?
 
         return {"id":id,
@@ -405,7 +410,7 @@ class EmailController:
                 "date":date,
                 "urgency":urgency,
                 "sender":sender,
-                "recipients":recipients}
+                "recipients":recipients_str}
 
     def get_attachments(self, mail:Email):
         with Session(self.engine) as session:

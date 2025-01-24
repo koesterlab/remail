@@ -1,3 +1,4 @@
+import json
 import chromadb as db
 import hashlib
 import os, sys
@@ -45,7 +46,7 @@ class LLM(object):
         # Disable OpenAI usage by explicitly! Never remove this
         Settings.llm = None
         Settings.context_window = 8192  # arbitrary number, llama 3.2 can do up to 128k
-
+        Settings.chunk_size=4096
         # Llama-cpp Configuration
         self._llama = Llama(
             model_path=self.MODEL_PATH,
@@ -117,10 +118,10 @@ class LLM(object):
         """initial setup of the Vector Store Index, creating the embedding"""
         try:
             # Load documents
-            documents = SimpleDirectoryReader(self._data_folder).load_data()
-            print("Data loaded!")
+            documents = self._db_to_nodes()
+            print("Data loaded from Database!")
 
-            # Create VectorStoreIndex with LLM explicitly set to None
+            # Create VectorStoreIndex
             index = VectorStoreIndex.from_documents(
                 documents,
                 storage_context=self._storage_context,
@@ -132,6 +133,7 @@ class LLM(object):
             with open(self._hash_file, "w") as f:
                 f.write(self._current_hash)
             return index
+            
         except Exception as e:
             raise e
 
@@ -180,23 +182,32 @@ class LLM(object):
     def _db_to_nodes(self):
         emails = controller.controller.get_emails()
         docstore = []
+
         for mail in emails:
+            # Use get_full_email_data to retrieve all email-related data
+            email_data = controller.controller.get_full_email_data(mail)
 
-            sender= controller.controller.get_contact_by_id(mail.sender_id)
-
-            
-            #define document
+            # Define document using the data retrieved
             doc = Document(
-                text=mail.body,
+                text=email_data["body"],
                 metadata={
-                    "subject"=mail.subject,
-                    "time"=mail.date,
-                    "sender"=sender.email_address,
-                    "extra_recipients"=
+                    "id": email_data["id"],
+                    "message_id": email_data["message_id"],
+                    "subject": email_data["subject"],
+                    "body": email_data["body"],
+                    "time": email_data["date"],
+                    "urgency": email_data["urgency"],
+                    "sender": email_data["sender"],
+                    "recipients": email_data["recipients"]
                 }
             )
-
-
+            # Only to see what gets hashed (for testing)
+            # f = open("MemStorage.txt", "a")
+            # f.write(json.dumps({"text": doc.text, "metadata": doc.metadata}) + "\n")            
+            # f.close()
+            docstore.append(doc)
+        return docstore
+  
 
     def prompt(self, prompt: str) -> str:
         """Use this for prompting. Takes a string as the input and returns the response as a string"""
