@@ -3,6 +3,7 @@ import time
 import random
 import mimetypes  # Für die korrekte Erkennung von MIME-Types
 from remail.controller import controller
+from remail.database.models import Contact
 
 
 # Beispiel-Daten
@@ -70,7 +71,22 @@ if "filter_option" not in st.session_state:
 if "search_query" not in st.session_state:
     st.session_state.search_query = ""
 
-st.set_page_config(page_title="Remail", layout="wide")
+# Kontakte beim Laden der Seite abrufen (hier direkt nach der Initialisierung)
+if "contacts" not in st.session_state or not st.session_state.contacts:
+    try:
+        # Lade Kontakte aus der Datenbank
+        db_contacts = controller.get_contacts()
+        
+        # Falls Kontakte aus der Datenbank geladen wurden, speichere sie im Session-Status
+        if db_contacts:
+            st.session_state.contacts = {contact.email_address: contact.name for contact in db_contacts}
+        else:
+            st.session_state.contacts = {}  # Leeres Dictionary, falls keine Kontakte vorhanden sind
+        
+    except Exception as e:
+        st.error(f"Fehler beim Abrufen der Kontakte: {str(e)}")
+
+
 
 
 # New Mail
@@ -107,29 +123,18 @@ if "cancel_email" in st.session_state and st.session_state.pop("cancel_email"):
     st.rerun()
 
 
-# Kontakte beim Laden der Seite abrufen
-if "contacts" not in st.session_state:
-    try:
-        # Lade Kontakte aus der Datenbank
-        db_contacts = controller.get_contacts()
-        # Speichern der Kontakte im Session-Status
-        st.session_state.contacts = {contact.email_address: contact.name for contact in db_contacts}
-    except Exception as e:
-        st.error(f"Error fetching contacts: {str(e)}")
-
-
 # "New Contact"
 def new_contact_form():
     st.subheader("Add new contact")
     contact_name = st.text_input("Name:", key="contact_name_input")
-    contact_surname = st.text_input("Surname:", key="contact_surname_input")
+    #contact_surname = st.text_input("Surname:", key="contact_surname_input")
     email_address = st.text_input("E-Mail address:", key="email_address_input")
 
     col1, col2 = st.columns([1, 1])
     with col1:
         if st.button("Create new contact", key="create_contact_button"):
-            if contact_name and contact_surname and email_address:
-                full_name = f"{contact_name} {contact_surname}"
+            if contact_name and email_address:
+                full_name = f"{contact_name}"
                 try:
                     # Speichern des neuen Kontakts in der Datenbank
                     contact = controller.create_contact(email_address=email_address, name=full_name)
@@ -139,7 +144,8 @@ def new_contact_form():
                     st.session_state.contacts = {contact.email_address: contact.name for contact in db_contacts}
                     
                     st.success(f"Created contact {full_name} with email {email_address}")
-                    st.rerun() # Wichtig für die Aktualisierung der Kontaktliste
+                    st.session_state.selected_sender = None
+                    #st.rerun() # Wichtig für die Aktualisierung der Kontaktliste
                 except ValueError as e:
                     st.error(str(e))
                 except RuntimeError as e:  # Fange Runtime Errors ab
@@ -160,9 +166,8 @@ def send_message_to_sender(sender, message):
 
 
 # Layout
-empty_col1, col1, empty_col2, col2, empty_col3, col3, empty_col4 = st.columns(
-    [0.5, 1, 1, 2, 1, 3, 0.5]
-)
+empty_col1, col1, empty_col2, col2, empty_col3, col3, empty_col4 = st.columns([1, 8, 2, 8, 2, 8, 1])
+
 
 with st.sidebar:
     st.header("Emails")
@@ -175,13 +180,11 @@ with st.sidebar:
     try:
         # Lade Kontakte aus der Datenbank
         db_contacts = controller.get_contacts()
-        for contact in db_contacts:
-            st.write(f"{contact.name} ({contact.email_address})")
+        
     except Exception as e:
         st.error(f"Error fetching contacts: {str(e)}")
 
-    for email, name in st.session_state.contacts.items():
-        st.write(f"{name} ({email})")
+    
 
 with col1:
     st.subheader("Inbox")
@@ -194,24 +197,23 @@ with col1:
     )
 
     # Sender sortieren basierend auf Filter
-    contacts = list(st.session_state.contacts.items()) 
+    contacts = list(st.session_state.contacts.items())
     if st.session_state.filter_option == "Urgency":
         contacts = sorted(
             contacts,
-            key=lambda contact: random.randint(1, 5), 
+            key=lambda contact: random.randint(1, 5),
             reverse=True,
         )
     elif st.session_state.filter_option == "Date":
-        contacts = sorted(
-            contacts,
-            key=lambda contact: time.time(), reverse=True 
-        )
+        contacts = sorted(contacts, key=lambda contact: time.time(), reverse=True)
 
-    # Kontakte filtern basierend auf Suchanfrage
     search_query = st.session_state.search_query.lower()
     if search_query:
-        contacts=[
-            contact for contact in contacts if search_query in contact[0].lower() or search_query in contact[1].lower()]
+        contacts = [
+            contact for contact in contacts
+            if search_query in contact[0].lower() or search_query in contact[1].lower()
+        ]
+
 
     # Kontakte anzeigen
     for email, name in contacts:

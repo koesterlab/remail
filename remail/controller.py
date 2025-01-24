@@ -124,19 +124,19 @@ class EmailController:
                 session.commit()
                 return contact
         except Exception as e:
-            raise RuntimeError(f"Fehler beim Erstellen des Kontakts: {str(e)}") #Runtime Error werfen
+            raise RuntimeError(f"Fehler beim Erstellen des Kontakts: {str(e)}") 
 
 
     def get_contacts(self):
         """Gibt alle Kontakte aus."""
         with Session(self.engine) as session:
             contacts = session.exec(select(Contact)).all()
-            # self.logger.info(f"{len(contacts)} Kontakte gefunden.")
+            #print(f"Contacts loaded: {contacts}")  # Debug-Ausgabe
             return contacts
+        
+    
 
 
 controller = EmailController()
 
 
-# ret = controller.create_email("yasin.arazay@gmail.com", ["recipient@gmail.com"], "Generic Subject", "HELLLO")
-# print(ret)
