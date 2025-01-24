@@ -16,7 +16,6 @@ from remail.email_api.service import ImapProtocol, ExchangeProtocol, ProtocolTem
 import remail.email_api.email_errors as errors
 import keyring
 from tzlocal import get_localzone
-from pytz import timezone
 
 
 def error_handler(func):
