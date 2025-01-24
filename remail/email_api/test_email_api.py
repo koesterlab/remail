@@ -5,7 +5,7 @@ from contextlib import contextmanager
 from datetime import datetime
 from email.utils import format_datetime
 from email.message import EmailMessage
-from exchangelib import Credentials, Account, Message, EWSDateTime, Mailbox
+from exchangelib import Message, EWSDateTime, Mailbox
 from pytz import timezone
 
 from remail.controller import controller
