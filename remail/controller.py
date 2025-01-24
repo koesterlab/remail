@@ -55,7 +55,7 @@ class EmailController:
             return session.exec(select(User).limit(1)).first() is not None
 
     @error_handler
-    def refresh(self):
+    def refresh(self,observe_last_refresh: bool):
         """Aktualisiert alle E-Mails in der Datenbank."""
         with Session(self.engine) as session:
             users = session.exec(select(User)).all()
@@ -72,7 +72,7 @@ class EmailController:
                                 password=password,
                                 controller=self,
                             ),
-                            user.last_refresh,
+                            user.last_refresh if observe_last_refresh else None,
                             user.email,
                         )
                     ]
@@ -85,7 +85,7 @@ class EmailController:
                                 password=password,
                                 controller=self,
                             ),
-                            user.last_refresh,
+                            user.last_refresh if observe_last_refresh else None,
                             user.email,
                         )
                     ]
@@ -93,6 +93,18 @@ class EmailController:
             self._refresh(accounts)
             for user in users:
                 self._update_user_last_refresh(user.email)
+
+
+    @error_handler
+    def hard_refresh(self):
+        emails = []
+        with Session(self.engine) as session:
+            emails = session.exec(select(Email)).all()
+        for email in emails:
+            self.delete_email(email.id)
+        self.refresh(False)
+        
+
 
     def change_password(self, email: str, password: str):
         """Ändert das Passwort eines Benutzers"""
