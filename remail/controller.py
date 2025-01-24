@@ -359,7 +359,7 @@ class EmailController:
             ).first()
             if not contact:
                 raise ValueError(
-                    f"Kontakt mit E-Mail {email_address} existiert nicht."
+                        f"Kontakt mit E-Mail {email_address} existiert nicht."
                     )
             contact.name = name
             session.commit()
