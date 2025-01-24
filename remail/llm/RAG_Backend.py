@@ -116,7 +116,7 @@ class LLM(object):
 
         # Ensure the index is properly loaded
         if index is None:
-            raise Exception( # your mom
+            raise Exception(  # your mom
                 "Vector Index not initialized. Vector database setup might've failed."
             )
         # and raise an exception if it isnt
