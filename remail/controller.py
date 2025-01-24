@@ -47,7 +47,7 @@ class EmailController:
         SQLModel.metadata.create_all(engine)
         self.engine = engine
 
-        self.refresh()  # kann etwas dauern
+        self.refresh(True)  # kann etwas dauern
 
     def has_user(self):
         with Session(self.engine) as session:

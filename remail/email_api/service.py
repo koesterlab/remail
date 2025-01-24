@@ -691,6 +691,18 @@ def safe_file(filename: str, content: bytes, message_id: str) -> str:
     try:
         with open(filepath, "wb") as f:
             f.write(content)
+        os.chmod(filepath,rwx2dec("rwxrw-r--"))
         return filepath
     except Exception as e:
         raise e
+    
+def rwx2dec(string):
+    if len(string) != 9:
+        return False
+    else:
+        val = 0
+        for a in range(3):
+            for p in range(3):
+                if string[a * 3 + p] != "-":
+                    val += (8 ** (2 - a)) * (2 ** (2 - p))
+        return val
