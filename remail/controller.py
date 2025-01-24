@@ -4,7 +4,7 @@ remail_path = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.append(remail_path)
 #for those who dont have the project installed as a package
 
-from sqlmodel import Session, select, create_engine, insert
+from sqlmodel import Session, select, create_engine
 from remail.database.models import (
     Email,
     Contact,
@@ -396,11 +396,8 @@ class EmailController:
 
         sender = self.get_contact_by_id(mail.sender_id).email_address
         recipients = [contact.email_address for contact in self.get_recipients(id)]
-<<<<<<< HEAD
-=======
         recipients_str = ", ".join(recipients)
 
->>>>>>> b2a25b61c4d17eb3d232f34a5f73c344046c32ea
         #TODO @someone_please how to handle attachments? Are they even a thing rn?
 
         return {"id":id,
@@ -410,7 +407,7 @@ class EmailController:
                 "date":date,
                 "urgency":urgency,
                 "sender":sender,
-                "recipients":recipients_str}
+                "recipients":recipients}
 
     def get_attachments(self, mail:Email):
         with Session(self.engine) as session:
