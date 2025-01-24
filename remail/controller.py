@@ -16,6 +16,7 @@ from remail.email_api.service import ImapProtocol, ExchangeProtocol, ProtocolTem
 import remail.email_api.email_errors as errors
 import keyring
 from tzlocal import get_localzone
+import threading
 
 
 def error_handler(func):
@@ -47,14 +48,15 @@ class EmailController:
         SQLModel.metadata.create_all(engine)
         self.engine = engine
 
-        self.refresh(True)  # kann etwas dauern
+        self.refresh_thread = threading.Thread(target=self.refresh, args=(True,))
+        self.refresh_thread.start()
 
     def has_user(self):
         with Session(self.engine) as session:
             return session.exec(select(User).limit(1)).first() is not None
 
     @error_handler
-    def refresh(self,observe_last_refresh: bool):
+    def refresh(self, observe_last_refresh: bool):
         """Aktualisiert alle E-Mails in der Datenbank."""
         with Session(self.engine) as session:
             users = session.exec(select(User)).all()
@@ -93,7 +95,6 @@ class EmailController:
             for user in users:
                 self._update_user_last_refresh(user.email)
 
-
     @error_handler
     def hard_refresh(self):
         emails = []
@@ -102,8 +103,6 @@ class EmailController:
         for email in emails:
             self.delete_email(email.id)
         self.refresh(False)
-        
-
 
     def change_password(self, email: str, password: str):
         """Ändert das Passwort eines Benutzers"""
