@@ -51,9 +51,8 @@ class EmailController:
 
 
     def has_user(self):
-        with Session(self.engine) as session:
-            users = session.exec(select(User)).all()
-            return len(users) > 0
+        with Session(self.engine) as session:        
+            return session.exec(select(User).limit(1)).first() is not None
 
     @error_handler
     def refresh(self):
