@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-from remail.controller import controller
 from remail.database.models import (
     Email,
     EmailReception,
@@ -33,13 +32,14 @@ from exchangelib import (
     FileAttachment,
     errors as exch_errors,
     FolderCollection,
+    UTC,
 )
 import os
 import mimetypes
 from werkzeug.utils import secure_filename
 import tempfile
 from email.header import decode_header
-from email.utils import parsedate_to_datetime
+from email.utils import parsedate_to_datetime, getaddresses
 import remail.email_api.email_errors as ee
 from pytz import timezone
 
@@ -137,20 +137,26 @@ class ProtocolTemplate(ABC):
 
 
 class ImapProtocol(ProtocolTemplate):
-    def __init__(self, email: str, password: str, host: str):
+    def __init__(
+        self, email: str, password: str, host: str, controller: "EmailController" # type: ignore
+    ):  
         self.user_username = email
         self.user_password = password
         self.host = host
         self._logged_in = False
         self.IMAP = IMAPClient(self.host, use_uid=True)
+        self.controller = controller
 
     @property
     def logged_in(self) -> bool:
         return self._logged_in
 
+    @error_handler
     def login(self):
         if self.logged_in:
             return
+        if self.user_password is None:
+            raise ee.InvalidLoginData() from None
         try:
             self.IMAP.login(self.user_username, self.user_password)
             self._logged_in = True
@@ -159,6 +165,7 @@ class ImapProtocol(ProtocolTemplate):
         except Exception as e:
             raise e
 
+    @error_handler
     def logout(self):
         self.IMAP.logout()
         self.user_password = None
@@ -265,7 +272,7 @@ class ImapProtocol(ProtocolTemplate):
                 email_message = email.message_from_bytes(message_data[b"RFC822"])
                 if date is not None and date > parsedate_to_datetime(
                     email_message["Date"]
-                ):
+                ).astimezone(timezone("UTC")):
                     continue
                 attachments_file_names = []
                 html_parts = []
@@ -311,17 +318,34 @@ class ImapProtocol(ProtocolTemplate):
                         email_message.get_content_charset() or "utf-8", errors="replace"
                     )
 
+                x = getaddresses([email_message["From"]])
+                saddr = x[0][1]
                 listofMails += [
                     create_email(
                         uid=email_message["Message-Id"],
-                        sender=email_message["From"],
+                        sender=saddr,
                         subject=email_message["Subject"],
                         body=body,
                         attachments=attachments_file_names,
-                        to_recipients=email_message["To"],
-                        cc_recipients=email_message["Cc"],
-                        bcc_recipients=email_message["Bcc"],
-                        date=parsedate_to_datetime(email_message["Date"]),
+                        to_recipients=[
+                            (name,addr)
+                            for name, addr in getaddresses([email_message["To"]])
+                            if addr and addr.lower() != "none"
+                        ],
+                        cc_recipients=[
+                            (name,addr)
+                            for name, addr in getaddresses([email_message["Cc"]])
+                            if addr and addr.lower() != "none"
+                        ],
+                        bcc_recipients=[
+                            (name,addr)
+                            for name, addr in getaddresses([email_message["Bcc"]])
+                            if addr and addr.lower() != "none"
+                        ],
+                        date=parsedate_to_datetime(email_message["Date"]).astimezone(
+                            timezone("UTC")
+                        ),
+                        controller=self.controller,
                         html_files=html_parts,
                     )
                 ]
@@ -403,13 +427,16 @@ class ImapProtocol(ProtocolTemplate):
 
 
 class ExchangeProtocol(ProtocolTemplate):
-    def __init__(self, email: str, password: str, username: str):
+    def __init__(
+        self, email: str, password: str, username: str, controller: "EmailController" # type: ignore
+    ):  
         self.cred = None
         self.acc = None
         self._logged_in = False
         self.email = email
         self.password = password
         self.username = username
+        self.controller = controller
 
     @property
     def logged_in(self) -> bool:
@@ -496,6 +523,9 @@ class ExchangeProtocol(ProtocolTemplate):
         return list(set(message_ids) - set(server_uids))
 
     def _get_items(self, start_date: datetime = None, message_id=""):
+        if start_date:
+            start_date = start_date.astimezone(UTC)
+
         email_folders = [
             f
             for f in self.acc.root.walk()
@@ -535,7 +565,9 @@ class ExchangeProtocol(ProtocolTemplate):
                 attachments += [safe_file(attachment.name, attachment.content)]
 
         ews_datetime_str = item.datetime_received.astimezone()
-        parsed_datetime = datetime.fromisoformat(ews_datetime_str.ewsformat())
+        parsed_datetime = datetime.fromisoformat(
+            ews_datetime_str.ewsformat()
+        ).astimezone(timezone("UTC"))
 
         body = item.text_body
         if item.body != body:
@@ -550,16 +582,17 @@ class ExchangeProtocol(ProtocolTemplate):
                 subject=item.subject,
                 body=body,
                 attachments=attachments,
-                to_recipients=[i.email_address for i in item.to_recipients],
+                to_recipients=[(i.name,i.email_address) for i in item.to_recipients],
                 cc_recipients=[
-                    item.email_address
+                    (item.name,item.email_address)
                     for item in (item.cc_recipients if item.cc_recipients else [])
                 ],
                 bcc_recipients=[
-                    item.email_address
+                    (item.name,item.email_address)
                     for item in (item.bcc_recipients if item.bcc_recipients else [])
                 ],
                 date=parsed_datetime,
+                controller=self.controller,
                 html_files=html,
             )
         ]
@@ -578,32 +611,32 @@ def create_email(
     cc_recipients: list[str],
     bcc_recipients: list[str],
     date: datetime,
+    controller: "EmailController",  # type: ignore
     html_files: list[str] = None,
 ) -> Email:
     sender_contact = controller.get_contact(sender)
-
     recipients = [
-        EmailReception(contact=controller.get_contact(recipient), kind=RecipientKind.to)
+        EmailReception(contact=controller.get_contact(recipient[1],recipient[0]), kind=RecipientKind.to)
         for recipient in to_recipients
     ]
     if cc_recipients:
         recipients += [
             EmailReception(
-                contact=controller.get_contact(recipient), kind=RecipientKind.cc
+                contact=controller.get_contact(recipient[1],recipient[0]), kind=RecipientKind.cc
             )
             for recipient in cc_recipients
         ]
     if bcc_recipients:
         recipients += [
             EmailReception(
-                contact=controller.get_contact(recipient), kind=RecipientKind.bcc
+                contact=controller.get_contact(recipient[1],recipient[0]), kind=RecipientKind.bcc
             )
             for recipient in bcc_recipients
         ]
 
     email = Email(
         message_id=uid,
-        sender_contact=sender_contact,
+        sender=sender_contact,
         subject=subject,
         body=body,
         recipients=recipients,

@@ -5,39 +5,10 @@ from contextlib import contextmanager
 from datetime import datetime
 from email.utils import format_datetime
 from email.message import EmailMessage
+from exchangelib import Message, EWSDateTime, Mailbox
+from pytz import timezone
 
-imap_test_email = Email(
-    subject="test_imap_mail",
-    body="Test!!",
-    recipients=[
-        EmailReception(
-            contact=(Contact(email_address="praxisprojekt-remail@uni-due.de")),
-            kind=RecipientKind.to,
-        )
-    ],
-)
-
-exchange_test_email = Email(
-    subject="test_exchange_mail",
-    body="Test!!",
-    recipients=[
-        EmailReception(
-            contact=(Contact(email_address="thatchmilo35@gmail.com")),
-            kind=RecipientKind.to,
-        )
-    ],
-)
-
-email_message = EmailMessage()
-email_message["Message-Id"] = "test-id"
-email_message["From"] = "test@example.com"
-email_message["Subject"] = "Test Subject"
-email_message["To"] = "recipient@example.com"
-email_message["Cc"] = None
-email_message["Bcc"] = None
-email_message["Date"] = format_datetime(datetime(2024, 1, 1, 12, 0, 0))
-email_message.set_content("This is a test email body.")
-# email_message.add_attachment(b"Test content", filename="test.txt")
+from remail.controller import controller
 
 
 @contextmanager
@@ -57,7 +28,7 @@ def email_test_context():
         exchange.logout()
 
 
-def test_get_emails_with_mocking(mocker):
+def test_get_emails_with_mocking_imap(mocker):
     mocked_imap = mocker.Mock()
     mocked_imap.list_folders.return_value = [
         ([b"\\HasNoChildren"], None, "INBOX"),
@@ -78,6 +49,7 @@ def test_get_emails_with_mocking(mocker):
 
     mocked_self = mocker.Mock()
     mocked_self.IMAP = mocked_imap
+    mocked_self.controller = controller
     mocked_self.logged_in = True
 
     # Testmethoden patchen
@@ -103,3 +75,40 @@ def test_get_emails_with_mocking(mocker):
     assert mocked_imap.select_folder.call_count == 2
     mocked_imap.select_folder.assert_any_call("INBOX")
     mocked_imap.select_folder.assert_any_call("SENT")
+
+
+def test_get_emails_with_mocking_exchange(mocker):
+    mocked_exchange = mocker.Mock()
+
+    mocked_self = mocker.Mock()
+    mocked_self.acc = mocked_exchange
+    mocked_self.logged_in = True
+
+    item = Message()
+    item.message_id = "test-id"
+    item.datetime_received = EWSDateTime.from_datetime(
+        datetime(2024, 1, 1, 1, 0, 0, tzinfo=timezone("UTC"))
+    )
+    item.text_body = "This is the email body.\n"
+    item.sender = Mailbox()
+    item.sender.email_address = "sender@example.com"
+    item.subject = "Test Subject"
+    recipient = Mailbox()
+    recipient.email_address = "recipient@example.com"
+    item.to_recipients = [recipient]
+
+    date_filter = datetime(2024, 1, 1, 0, 0, 0, tzinfo=timezone("UTC"))
+
+    mocked_self.controller = controller
+    mocked_self._get_items.return_value = [item]
+    mocked_self._get_email_exchange = ExchangeProtocol._get_email_exchange.__get__(
+        mocked_self
+    )
+
+    result = ExchangeProtocol.get_emails(mocked_self, date=date_filter)
+    print(result)
+    # Assertions: Überprüfen, ob die Ergebnisse korrekt sind
+    assert len(result) == 1  # INBOX und SENT wurden verarbeitet
+    assert result[0].message_id == "test-id"
+    assert result[0].subject == "Test Subject"
+    assert result[0].body == "This is the email body.\n"
