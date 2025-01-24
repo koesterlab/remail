@@ -656,11 +656,10 @@ def safe_file(filename: str, content: bytes) -> str:
     max_size = 10 * 1024 * 1024  # muss noch von wo anders bestimmt werden 10 MB
     if len(content) > max_size:
         raise BufferError(f"File size exceeds limit of {max_size} bytes")
-    temp_dir = tempfile.gettempdir()
     safe_filename = secure_filename(filename)
     if not safe_filename:
         raise ValueError("Invalid filename")
-    filepath = os.path.join(temp_dir, safe_filename)
+    filepath = os.path.join("/remail/database/attachments/", safe_filename)
     try:
         with open(filepath, "wb") as f:
             f.write(content)
