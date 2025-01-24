@@ -178,7 +178,7 @@ class LLM(object):
             print(f"[ERROR] Failed to download the file: {e}")
 
     def _db_to_nodes(self):
-        emails = controller.controller.get_emails(sender_email=)
+        emails = controller.controller.get_emails()
         docstore = []
         for mail in emails:
 

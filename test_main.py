@@ -6,5 +6,6 @@ import remail.controller as controller
 
 
 #emails = controller.controller.get_emails()
-recipients = controller.controller.get_recipients(1304)
-print([contact.email_address for contact in recipients])
+email = controller.controller.get_emails(recipient_email="robinhempel1@gmail.com")
+print(controller.controller.get_full_email_data(email[1]))
+print(controller.controller.get_attachments(email[1]))
