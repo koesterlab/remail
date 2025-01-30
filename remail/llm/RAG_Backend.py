@@ -23,7 +23,7 @@ import controller
 class LLM(object):
     # for installing the model can be changed to any model later
     TARGET_DIR = "./remail/llm/models"
-    MODEL_FILE = "Llama-3.2-1B-Instruct-Q4_K_M.gguf"
+    MODEL_FILE = "Llama-3.2-1B-Instruct-Q6_K_L.gguf"
     MODEL_URL = (
         "https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF/resolve/main/"
         + MODEL_FILE
@@ -33,7 +33,7 @@ class LLM(object):
 
     # Directory Configuration
     _hash_file = "./remail/llm/db/data_hash.txt"
-    _data_folder = "./remail/llm/vectorData"
+    _attach_folder = "./remail/database/attachments"
     _db_path = "./remail/llm/db/chroma_db"
     _collection_name = "quickstart"
 
@@ -46,7 +46,7 @@ class LLM(object):
         # Disable OpenAI usage by explicitly! Never remove this
         Settings.llm = None
         Settings.context_window = 8192  # arbitrary number, llama 3.2 can do up to 128k
-        Settings.chunk_size=4096
+        Settings.chunk_size=4096 #required because the emails can be large. Should probably either be bumped up or implement a node parser/splitter
         # Llama-cpp Configuration
         self._llama = Llama(
             model_path=self.MODEL_PATH,
@@ -164,7 +164,10 @@ class LLM(object):
     #                 continue
     #     return hash_obj.hexdigest()
 
-        # Folder exists?
+
+
+#LLM File Management
+#-------------------------------------------
     def _ensure_directory_exists(self, directory):
         if not os.path.exists(directory):
             os.makedirs(directory)
@@ -190,8 +193,13 @@ class LLM(object):
             print(f"[INFO] Model file installed successfully at {destination_path}.")
         except Exception as e:
             print(f"[ERROR] Failed to download the file: {e}")
+#---------------------------------------------
 
+
+#Node/Document management
+#---------------------------------------------
     def _db_to_nodes(self):
+        """"Converts all Emails to Documents to embed into Vector DB"""
         emails = controller.controller.get_emails()
         docstore = []
 
@@ -219,15 +227,27 @@ class LLM(object):
             f.close()
             docstore.append(doc)
         return docstore
-  
-
+    
+    #TODO
+    def _attachment_metadata(self):
+        #If there are not attachments, do nothing
+        if not (os.path.exists(self._attach_folder) or os.listdir(self._attach_folder)>0):
+            return
+        
+        #attachments are stored in folders corresponding to their mail ids
+        #if there are multiple attachments per mail, they are still stored in one folder
+        mail_ids=os.listdir(self._attach_folder) #get list of all mail ids
+        email_data=[]
+        for mail in mail_ids:
+            email_data.append(controller.controller.get_mail_by_id(mail)) #append all mails to a list
+        
+        
+#------------------------------------------
     def prompt(self, prompt: str) -> str:
         """Use this for prompting. Takes a string as the input and returns the response as a string"""
         try:
             context = self._query_engine.query(prompt).response
-            response = self._llama(context, max_tokens=Settings.context_window)[
-                "choices"
-            ][0]["text"].strip()
+            response = self._llama(context, max_tokens=Settings.context_window)["choices"][0]["text"].strip()
             return response
         except Exception as e:
             return f"An error occurred: {str(e)}"

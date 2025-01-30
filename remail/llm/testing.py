@@ -7,8 +7,7 @@ sys.path.append(remail_path)
 import controller
 
 emails = controller.controller.get_emails()
-for mail in emails:
-    
+print(emails)
 
 #llm= RAG_Backend.LLM()
 #llm._connectToDb()

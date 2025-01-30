@@ -5,3 +5,8 @@
 __pycache__
 /llm/db
 database.db
+database.db
+database.db.wal
+MemStorage.txt
+/remail/database/attachments
+database.db.wal
