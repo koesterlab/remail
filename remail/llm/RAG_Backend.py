@@ -74,7 +74,7 @@ class LLM(object):
 
         # Check for new documents, and either load the vector db from file or recreate it.
         try:
-            self._current_hash = self._compute_folder_hash(self._data_folder)
+            self._current_hash = self._compute_data_hash()
             previous_hash = None
 
             # Read the previous hash if it exists
@@ -114,6 +114,18 @@ class LLM(object):
             base_query_engine, query_response_evaluator, max_retries=2
         )
 
+    def _compute_data_hash(self):
+        """Compute a hash of all documents' content and metadata to detect changes."""
+        hash_obj = hashlib.sha256()
+        
+        # Loop through each document in docstore (or whichever data you use)
+        for doc in self._db_to_nodes():  # Ensure this method returns the actual documents
+            # Concatenate document text and metadata (subject, sender, etc.)
+            doc_str = doc.text + json.dumps(doc.metadata, sort_keys=True)  # Sorting metadata for consistent hashing
+            hash_obj.update(doc_str.encode('utf-8'))
+        
+        return hash_obj.hexdigest()
+
     def _setup_index(self):
         """initial setup of the Vector Store Index, creating the embedding"""
         try:
@@ -137,20 +149,20 @@ class LLM(object):
         except Exception as e:
             raise e
 
-    def _compute_folder_hash(self, folder_path):
-        """Compute a hash of all files in the folder to detect changes."""
-        hash_obj = hashlib.sha256()
-        for root, _, files in os.walk(folder_path):
-            for file in sorted(files):  # Sort files to ensure consistent ordering
-                file_path = os.path.join(root, file)
-                try:
-                    with open(file_path, "rb") as f:
-                        while chunk := f.read(8192):  # Read file in chunks
-                            hash_obj.update(chunk)
-                except IOError as e:
-                    print(f"Warning: Could not read file {file_path}: {str(e)}")
-                    continue
-        return hash_obj.hexdigest()
+    # def _compute_folder_hash(self, folder_path):
+    #     """Compute a hash of all files in the folder to detect changes."""
+    #     hash_obj = hashlib.sha256()
+    #     for root, _, files in os.walk(folder_path):
+    #         for file in sorted(files):  # Sort files to ensure consistent ordering
+    #             file_path = os.path.join(root, file)
+    #             try:
+    #                 with open(file_path, "rb") as f:
+    #                     while chunk := f.read(8192):  # Read file in chunks
+    #                         hash_obj.update(chunk)
+    #             except IOError as e:
+    #                 print(f"Warning: Could not read file {file_path}: {str(e)}")
+    #                 continue
+    #     return hash_obj.hexdigest()
 
         # Folder exists?
     def _ensure_directory_exists(self, directory):
@@ -202,9 +214,9 @@ class LLM(object):
                 }
             )
             # Only to see what gets hashed (for testing)
-            # f = open("MemStorage.txt", "a")
-            # f.write(json.dumps({"text": doc.text, "metadata": doc.metadata}) + "\n")            
-            # f.close()
+            f = open("MemStorage.txt", "a")
+            f.write(json.dumps({"text": doc.text, "metadata": doc.metadata}) + "\n")            
+            f.close()
             docstore.append(doc)
         return docstore
   
