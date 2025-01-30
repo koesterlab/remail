@@ -65,7 +65,7 @@ class Protocol(Enum):
 
 
 class User(SQLModel, table=True):
-    id: Optional[int] = id_field("email")
+    id: Optional[int] = id_field("user")
     name: str
     email: str
     protocol: Protocol = Field(sa_column=sqlalchemy.Column(sqlalchemy.Enum(Protocol)))

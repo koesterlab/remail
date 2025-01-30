@@ -384,6 +384,72 @@ class EmailController:
             return contact[0]
         else:
             return self.create_contact(email, name)
+        
+
+    def get_contact_by_id(self, id: int) -> Contact:
+        """Returns contact by ID"""
+        contacts=self.get_contacts()
+        contact = [con for con in contacts if con.id == id]
+        if len(contact) > 0:
+            return contact[0]
+        else:
+            return None
+    
+    def get_recipients(self, mail_id: int):
+        """Returns a list of all recipients of an email"""
+        #query: Select em.id, c.email_address  
+        # from database.main.email em inner join database.main.emailreception er on em.id=er.email_id inner join database.main.contact c on er.contact_id=c.id  
+        with Session(self.engine) as session:
+            query = (select(Contact)
+                     .join(EmailReception, Contact.id==EmailReception.contact_id)
+                     .join(Email, EmailReception.email_id == Email.id)
+                     .where(Email.id==mail_id)
+                    )
+            contacts = session.exec(query).all()
+        return contacts
+
+    def get_mail_by_message_id(self, mail_id: str):
+        """Returns Email Object by message_id"""
+        with Session(self.engine) as session:
+            query =(
+                select(Email).where(Email.message_id==mail_id)
+            )
+            mail=session.exec(query).all()
+        return mail
+        
+
+
+    def get_full_email_data(self, mail: Email):
+        """Returns all metadata about an email"""
+        id = mail.id
+        message_id = mail.message_id
+        subject = mail.subject
+        body = mail.body
+        date = mail.date.strftime("%Y-%m-%d %H:%M:%S")
+        urgency = mail.urgency
+
+        sender = self.get_contact_by_id(mail.sender_id).email_address
+        recipients = [contact.email_address for contact in self.get_recipients(id)]
+        recipients_str = ", ".join(recipients)
+        # Attachments are to be handled separately
+
+        return {"id":id,
+                "message_id":message_id,
+                "subject":subject,
+                "body":body,
+                "date":date,
+                "urgency":urgency,
+                "sender":sender,
+                "recipients":recipients_str}
+
+    def get_attachments(self, mail:Email):
+        """Returns Attachments for an Email"""
+        with Session(self.engine) as session:
+            query = (select(Attachment)
+                    .join(Email, Attachment.email_id == Email.id)
+                    .where(Email.id==mail.id))
+            attachments= session.exec(query).all()
+        return attachments
 
 
 controller = EmailController()

@@ -1,0 +1,6 @@
+{
+    "python.analysis.extraPaths": [
+        "./remail/llm",
+        "./remail"
+    ]
+}

@@ -1,21 +1,29 @@
+import json
 import chromadb as db
 import hashlib
-import os
+import os, sys
+
+
+# Add the Remail directory (parent folder) to sys.path
+remail_path = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+sys.path.append(remail_path)
+
+
 import requests
 from llama_cpp import Llama
-from llama_index.core import Settings, VectorStoreIndex, SimpleDirectoryReader
+from llama_index.core import Settings, VectorStoreIndex, SimpleDirectoryReader, StorageContext
 from llama_index.vector_stores.chroma import ChromaVectorStore
-from llama_index.core import StorageContext
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from pathlib import Path
 from llama_index.core.query_engine import RetrySourceQueryEngine
 from llama_index.core.evaluation import RelevancyEvaluator
-
+from llama_index.core.schema import Document
+import controller
 
 class LLM(object):
     # for installing the model can be changed to any model later
     TARGET_DIR = "./remail/llm/models"
-    MODEL_FILE = "Llama-3.2-1B-Instruct-Q4_K_M.gguf"
+    MODEL_FILE = "Llama-3.2-1B-Instruct-Q6_K_L.gguf"
     MODEL_URL = (
         "https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF/resolve/main/"
         + MODEL_FILE
@@ -25,47 +33,20 @@ class LLM(object):
 
     # Directory Configuration
     _hash_file = "./remail/llm/db/data_hash.txt"
-    _data_folder = "./remail/llm/vectorData"
+    _attach_folder = "./remail/database/attachments"
     _db_path = "./remail/llm/db/chroma_db"
     _collection_name = "quickstart"
-
-    # Folder exists?
-    def ensure_directory_exists(self, directory):
-        if not os.path.exists(directory):
-            os.makedirs(directory)
-
-    def download_file(self, url, destination):
-        response = requests.get(url, stream=True)
-        if response.status_code == 200:
-            with open(destination, "wb") as file:
-                for chunk in response.iter_content(chunk_size=8192):
-                    file.write(chunk)
-        else:
-            raise Exception(f"Failed to download file: HTTP {response.status_code}")
-
-    def llm_installer(self):
-        # Ensure the target directory exists
-        self.ensure_directory_exists(self.TARGET_DIR)
-        destination_path = os.path.join(self.TARGET_DIR, self.MODEL_FILE)
-
-        # Download the model file
-        print(f"[INFO] Downloading {self.MODEL_FILE} to {destination_path}...")
-        try:
-            self.download_file(self.MODEL_URL, destination_path)
-            print(f"[INFO] Model file installed successfully at {destination_path}.")
-        except Exception as e:
-            print(f"[ERROR] Failed to download the file: {e}")
 
     def __init__(self):
         # Look up if a llm already exists
         destination_path = os.path.join(self.TARGET_DIR, self.MODEL_FILE)
         if not os.path.exists(destination_path):
-            self.llm_installer()
+            self._llm_installer()
 
         # Disable OpenAI usage by explicitly! Never remove this
         Settings.llm = None
         Settings.context_window = 8192  # arbitrary number, llama 3.2 can do up to 128k
-
+        Settings.chunk_size=4096 #required because the emails can be large. Should probably either be bumped up or implement a node parser/splitter
         # Llama-cpp Configuration
         self._llama = Llama(
             model_path=self.MODEL_PATH,
@@ -93,7 +74,7 @@ class LLM(object):
 
         # Check for new documents, and either load the vector db from file or recreate it.
         try:
-            self._current_hash = self._compute_folder_hash(self._data_folder)
+            self._current_hash = self._compute_data_hash()
             previous_hash = None
 
             # Read the previous hash if it exists
@@ -133,14 +114,26 @@ class LLM(object):
             base_query_engine, query_response_evaluator, max_retries=2
         )
 
+    def _compute_data_hash(self):
+        """Compute a hash of all documents' content and metadata to detect changes."""
+        hash_obj = hashlib.sha256()
+        
+        # Loop through each document in docstore (or whichever data you use)
+        for doc in self._db_to_nodes():  # Ensure this method returns the actual documents
+            # Concatenate document text and metadata (subject, sender, etc.)
+            doc_str = doc.text + json.dumps(doc.metadata, sort_keys=True)  # Sorting metadata for consistent hashing
+            hash_obj.update(doc_str.encode('utf-8'))
+        
+        return hash_obj.hexdigest()
+
     def _setup_index(self):
         """initial setup of the Vector Store Index, creating the embedding"""
         try:
             # Load documents
-            documents = SimpleDirectoryReader(self._data_folder).load_data()
-            print("Data loaded!")
+            documents = self._db_to_nodes()
+            print("Data loaded from Database!")
 
-            # Create VectorStoreIndex with LLM explicitly set to None
+            # Create VectorStoreIndex
             index = VectorStoreIndex.from_documents(
                 documents,
                 storage_context=self._storage_context,
@@ -152,31 +145,109 @@ class LLM(object):
             with open(self._hash_file, "w") as f:
                 f.write(self._current_hash)
             return index
+            
         except Exception as e:
             raise e
 
-    def _compute_folder_hash(self, folder_path):
-        """Compute a hash of all files in the folder to detect changes."""
-        hash_obj = hashlib.sha256()
-        for root, _, files in os.walk(folder_path):
-            for file in sorted(files):  # Sort files to ensure consistent ordering
-                file_path = os.path.join(root, file)
-                try:
-                    with open(file_path, "rb") as f:
-                        while chunk := f.read(8192):  # Read file in chunks
-                            hash_obj.update(chunk)
-                except IOError as e:
-                    print(f"Warning: Could not read file {file_path}: {str(e)}")
-                    continue
-        return hash_obj.hexdigest()
+    # def _compute_folder_hash(self, folder_path):
+    #     """Compute a hash of all files in the folder to detect changes."""
+    #     hash_obj = hashlib.sha256()
+    #     for root, _, files in os.walk(folder_path):
+    #         for file in sorted(files):  # Sort files to ensure consistent ordering
+    #             file_path = os.path.join(root, file)
+    #             try:
+    #                 with open(file_path, "rb") as f:
+    #                     while chunk := f.read(8192):  # Read file in chunks
+    #                         hash_obj.update(chunk)
+    #             except IOError as e:
+    #                 print(f"Warning: Could not read file {file_path}: {str(e)}")
+    #                 continue
+    #     return hash_obj.hexdigest()
 
+
+
+#LLM File Management
+#-------------------------------------------
+    def _ensure_directory_exists(self, directory):
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+
+    def _download_file(self, url, destination):
+        response = requests.get(url, stream=True)
+        if response.status_code == 200:
+            with open(destination, "wb") as file:
+                for chunk in response.iter_content(chunk_size=8192):
+                    file.write(chunk)
+        else:
+            raise Exception(f"Failed to download file: HTTP {response.status_code}")
+
+    def _llm_installer(self):
+        # Ensure the target directory exists
+        self._ensure_directory_exists(self.TARGET_DIR)
+        destination_path = os.path.join(self.TARGET_DIR, self.MODEL_FILE)
+
+        # Download the model file
+        print(f"[INFO] Downloading {self.MODEL_FILE} to {destination_path}...")
+        try:
+            self._download_file(self.MODEL_URL, destination_path)
+            print(f"[INFO] Model file installed successfully at {destination_path}.")
+        except Exception as e:
+            print(f"[ERROR] Failed to download the file: {e}")
+#---------------------------------------------
+
+
+#Node/Document management
+#---------------------------------------------
+    def _db_to_nodes(self):
+        """"Converts all Emails to Documents to embed into Vector DB"""
+        emails = controller.controller.get_emails()
+        docstore = []
+
+        for mail in emails:
+            # Use get_full_email_data to retrieve all email-related data
+            email_data = controller.controller.get_full_email_data(mail)
+
+            # Define document using the data retrieved
+            doc = Document(
+                text=email_data["body"],
+                metadata={
+                    "id": email_data["id"],
+                    "message_id": email_data["message_id"],
+                    "subject": email_data["subject"],
+                    "body": email_data["body"],
+                    "time": email_data["date"],
+                    "urgency": email_data["urgency"],
+                    "sender": email_data["sender"],
+                    "recipients": email_data["recipients"]
+                }
+            )
+            # Only to see what gets hashed (for testing)
+            f = open("MemStorage.txt", "a")
+            f.write(json.dumps({"text": doc.text, "metadata": doc.metadata}) + "\n")            
+            f.close()
+            docstore.append(doc)
+        return docstore
+    
+    #TODO
+    def _attachment_metadata(self):
+        #If there are not attachments, do nothing
+        if not (os.path.exists(self._attach_folder) or os.listdir(self._attach_folder)>0):
+            return
+        
+        #attachments are stored in folders corresponding to their mail ids
+        #if there are multiple attachments per mail, they are still stored in one folder
+        mail_ids=os.listdir(self._attach_folder) #get list of all mail ids
+        email_data=[]
+        for mail in mail_ids:
+            email_data.append(controller.controller.get_mail_by_id(mail)) #append all mails to a list
+        
+        
+#------------------------------------------
     def prompt(self, prompt: str) -> str:
-        """Generates a response"""
+        """Use this for prompting. Takes a string as the input and returns the response as a string"""
         try:
             context = self._query_engine.query(prompt).response
-            response = self._llama(context, max_tokens=Settings.context_window)[
-                "choices"
-            ][0]["text"].strip()
+            response = self._llama(context, max_tokens=Settings.context_window)["choices"][0]["text"].strip()
             return response
         except Exception as e:
             return f"An error occurred: {str(e)}"
