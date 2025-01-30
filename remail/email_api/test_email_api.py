@@ -5,16 +5,11 @@ from contextlib import contextmanager
 from datetime import datetime
 from email.utils import format_datetime
 from email.message import EmailMessage
-from exchangelib import (
-    Credentials,
-    Account,
-    Message,
-    EWSDateTime,
-    Mailbox
-)
+from exchangelib import Message, EWSDateTime, Mailbox
 from pytz import timezone
 
 from remail.controller import controller
+
 
 @contextmanager
 def email_test_context():
@@ -81,6 +76,7 @@ def test_get_emails_with_mocking_imap(mocker):
     mocked_imap.select_folder.assert_any_call("INBOX")
     mocked_imap.select_folder.assert_any_call("SENT")
 
+
 def test_get_emails_with_mocking_exchange(mocker):
     mocked_exchange = mocker.Mock()
 
@@ -90,20 +86,24 @@ def test_get_emails_with_mocking_exchange(mocker):
 
     item = Message()
     item.message_id = "test-id"
-    item.datetime_received = EWSDateTime.from_datetime(datetime(2024, 1, 1,1,0,0,tzinfo=timezone("UTC")))
+    item.datetime_received = EWSDateTime.from_datetime(
+        datetime(2024, 1, 1, 1, 0, 0, tzinfo=timezone("UTC"))
+    )
     item.text_body = "This is the email body.\n"
     item.sender = Mailbox()
     item.sender.email_address = "sender@example.com"
-    item.subject =  "Test Subject"
+    item.subject = "Test Subject"
     recipient = Mailbox()
     recipient.email_address = "recipient@example.com"
     item.to_recipients = [recipient]
 
-    date_filter = datetime(2024, 1, 1,0,0,0,tzinfo=timezone("UTC"))
+    date_filter = datetime(2024, 1, 1, 0, 0, 0, tzinfo=timezone("UTC"))
 
     mocked_self.controller = controller
     mocked_self._get_items.return_value = [item]
-    mocked_self._get_email_exchange = ExchangeProtocol._get_email_exchange.__get__(mocked_self)
+    mocked_self._get_email_exchange = ExchangeProtocol._get_email_exchange.__get__(
+        mocked_self
+    )
 
     result = ExchangeProtocol.get_emails(mocked_self, date=date_filter)
     print(result)
@@ -112,4 +112,3 @@ def test_get_emails_with_mocking_exchange(mocker):
     assert result[0].message_id == "test-id"
     assert result[0].subject == "Test Subject"
     assert result[0].body == "This is the email body.\n"
-

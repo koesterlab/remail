@@ -4,3 +4,4 @@
 *.gguf
 __pycache__
 /llm/db
+database.db

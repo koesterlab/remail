@@ -10,7 +10,7 @@ remail_path = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.append(remail_path)
 
 # Import the RAG_Backend module using the full package path
-from LLM import RAG_Backend as rag
+from llm import RAG_Backend as rag
 
 llm = rag.LLM()
 
