@@ -1,0 +1,38 @@
+name: Run Pytest
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.12
+
+    - name: Install Poetry
+      run: |
+        python -m pip install --upgrade pip
+        pip install poetry  # Installiere Poetry
+
+    - name: Install dependencies with Poetry
+      run: |
+        poetry install --no-interaction --no-root  # Installiere alle Dependencies
+
+    - name: install pytest
+      run: pip install pytest
+      
+    - name: Run tests
+      run: pytest
+          
