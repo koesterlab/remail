@@ -21,6 +21,9 @@ jobs:
       with:
         python-version: 3.12
 
+    - name: install pytest
+      run: pip install pytest
+      
     - name: Run tests
       run: pytest
           
