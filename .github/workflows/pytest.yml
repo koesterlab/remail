@@ -23,6 +23,10 @@ jobs:
         pip install poetry  # Installiere Poetry
         echo "$HOME/.local/bin" >> $GITHUB_PATH  # Stellt sicher, dass Poetry gefunden wird
 
+    - name: Configure Poetry
+      run: |
+        poetry config virtualenvs.in-project true  # Nutzt lokale virtuelle Umgebung im Projekt
+
     - name: Cache Poetry dependencies
       uses: actions/cache@v3
       with:
