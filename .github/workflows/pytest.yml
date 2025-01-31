@@ -27,7 +27,7 @@ jobs:
         pip install poetry  # Installiere Poetry
 
     - name: Install dependencies with Poetry
-      run: |
+      run: | 
         poetry install --no-interaction --no-root  # Installiere alle Dependencies
       
     - name: Run tests
