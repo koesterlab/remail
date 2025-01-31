@@ -23,7 +23,7 @@ import controller
 class LLM(object):
     # for installing the model can be changed to any model later
     TARGET_DIR = "./remail/llm/models"
-    MODEL_FILE = "Llama-3.2-1B-Instruct-Q6_K_L.gguf"
+    MODEL_FILE = "Llama-3.2-1B-Instruct-Q8_0.gguf"
     MODEL_URL = (
         "https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF/resolve/main/"
         + MODEL_FILE
