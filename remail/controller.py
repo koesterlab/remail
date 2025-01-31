@@ -17,6 +17,7 @@ import remail.email_api.email_errors as errors
 import keyring
 from tzlocal import get_localzone
 import threading
+import os
 
 
 def error_handler(func):
@@ -40,6 +41,7 @@ def error_handler(func):
 
 class EmailController:
     def __init__(self):
+
         # Connect to the DuckDB database (will create a file-based database if it doesn't exist)
         conn = duckdb.connect("database.db")
         conn.close()
@@ -47,6 +49,9 @@ class EmailController:
         engine = create_engine("duckdb:///database.db")
         SQLModel.metadata.create_all(engine)
         self.engine = engine
+
+        if os.getenv("EMAIL_REFRESH") == "false":
+            return
 
         self.refresh_thread = threading.Thread(target=self.refresh, args=(True,))
         self.refresh_thread.start()

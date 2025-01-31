@@ -5,6 +5,8 @@ on: [push, pull_request]
 jobs:
   test:
     runs-on: ubuntu-latest
+    env:
+      EMAIL_REFRESH: "false"
 
     steps:
     - name: Check out code
