@@ -21,13 +21,9 @@ jobs:
         pip install poetry  # Installiere Poetry
         echo "$HOME/.local/bin" >> $GITHUB_PATH  # Stellt sicher, dass Poetry gefunden wird
 
-    - name: Configure Poetry
-      run: |
-        poetry config virtualenvs.in-project true  # Setzt virtuelle Umgebung ins Projektverzeichnis
-
     - name: Install dependencies with Poetry
       run: | 
-        poetry install --no-interaction --no-root  # Installiere alle Dependencies
+        poetry install --no-interaction  # Installiere alle Dependencies
       
     - name: Run tests
       run: poetry run pytest
