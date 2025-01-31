@@ -32,7 +32,7 @@ jobs:
         echo "$HOME/.local/bin" >> $GITHUB_PATH  # Stellt sicher, dass Poetry gefunden wird
 
     - name: Install dependencies with Poetry
-      run: | 
+      run: |  
         poetry install --no-interaction  # Installiere alle Dependencies
       
     - name: Run tests
