@@ -1,3 +1,8 @@
+import os, sys
+# Add the Remail directory (parent folder) to sys.path
+remail_path = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+sys.path.append(remail_path)
+
 from sqlmodel import Session, select, create_engine
 from remail.database.models import (
     Email,
