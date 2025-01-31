@@ -225,7 +225,28 @@ with col2:
     selected_sender = st.session_state.get("selected_sender")
 
     if selected_sender:
-        st.subheader(f"Chat mit {st.session_state.contacts[selected_sender]}")
+        insideCol1, insideCol2 = st.columns([1, 2])
+        with insideCol1:
+            # Profile Picture
+            st.markdown(
+                f"""
+                <div style="margin: 0; padding: 0;">  <svg width="100%" height="100%" viewBox="0 0 100 100" style="max-width: 50px;"><circle cx="50" cy="50" r="40" fill="#f0f0f0" />
+                        <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-size="40" fill="#333" font-weight="bold">{st.session_state.contacts[selected_sender][:2].upper()}</text>
+                    </svg>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+        with insideCol2:
+            # Chat name
+            st.markdown(
+                f"""
+                <div style="display: flex; align-items: center; justify-content: flex-start; height: 50px; margin: 0; padding: 0;"> <span style="white-space: nowrap;">{st.session_state.contacts[selected_sender]}</span>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+ 
         chat_history = st.session_state.chat_history.get(selected_sender, [])
 
         # Initialisiere den Zeitstempel für die letzte Nachricht, falls noch nicht vorhanden
@@ -247,8 +268,26 @@ with col2:
 
             # Überprüfe, ob die Nachricht existiert und zeige sie an
             if "message" in chat:
-                message_display = f"{sender_display}: {chat['message']}"
-                st.markdown(message_display, unsafe_allow_html=True)
+                message_display = chat['message']
+                # Chatbubble design reciver and sender
+                if chat["type"] == "received":
+                    st.markdown(
+                        f"""
+                        <div style="display: flex; flex-direction: row;"> 
+                            <span style="background: linear-gradient(to bottom, #c9d6ff, #e2e2e2); border-radius: 15px; padding: 0px 5px 0px 5px; display: inline-block; max-width: 100%; overflow-wrap: break-word;">{message_display}</span>
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
+                else:
+                    st.markdown(
+                        f"""
+                        <div style="color: white; display: flex; flex-direction: row-reverse;"> 
+                            <span style="background: linear-gradient(135deg, rgb(0, 178, 255) 0%, rgb(0, 106, 255) 100%); border-radius: 15px; padding: 0px 5px 0px 5px; display: inline-block; max-width: 100%; overflow-wrap: break-word;">{message_display}</span>
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
 
             # Überprüfe, ob eine Datei angehängt ist und zeige sie an
             if "file_name" in chat:
