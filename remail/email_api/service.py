@@ -297,13 +297,15 @@ class ImapProtocol(ProtocolTemplate):
                                     filename = file.decode(
                                         encoding or "utf-8", errors="replace"
                                     )
-                                    attachments_file_names += [
-                                        safe_file(
-                                            filename,
-                                            part.get_payload(decode=True),
-                                            email_message["Message-Id"],
-                                        )
-                                    ]
+                                else: 
+                                    filename = file
+                                attachments_file_names += [
+                                    safe_file(
+                                        filename,
+                                        part.get_payload(decode=True),
+                                        email_message["Message-Id"],
+                                    )
+                                ]
 
                         # get HTML parts
                         if part.get_content_type() == "text/html":
