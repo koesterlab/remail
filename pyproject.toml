@@ -1,14 +1,10 @@
 [tool.poetry]
 name = "remail"
 version = "0.1.0"
-description = "A description for remail"
-authors = ["Your Name <your.email@example.com>"]
+description = ""
+authors = ["Your Name <you@example.com>"]
 readme = "README.md"
 license = "GPL-3.0-or-later"
-packages = [
-    { include = "remail" },
-    { include = "src" }
-]
 
 [tool.poetry.dependencies]
 python = "^3.12"
