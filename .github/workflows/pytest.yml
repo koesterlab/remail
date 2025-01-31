@@ -22,4 +22,12 @@ jobs:
         python-version: 3.12
 
     - name: Run pytest
-      run: pytest
+      uses: pavelzw/pytest-action@v2.1.0
+      with:
+        job-summary: true
+        verbose: true
+        emoji: true
+        custom-arguments: ""
+        custom-pytest: pytest
+        report-title: "Test Report"
+        click-to-expand: true
