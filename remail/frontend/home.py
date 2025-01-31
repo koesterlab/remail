@@ -2,7 +2,17 @@ import streamlit as st
 import time
 import random
 import mimetypes  # Für die korrekte Erkennung von MIME-Types
+import sys
+import os
 
+# Add the Remail directory (parent folder) to sys.path
+remail_path = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+sys.path.append(remail_path)
+
+# Import the RAG_Backend module using the full package path
+from llm import RAG_Backend as rag
+
+llm = rag.LLM()
 
 # Beispiel-Daten
 emails_data = {
@@ -69,22 +79,7 @@ if "filter_option" not in st.session_state:
 if "search_query" not in st.session_state:
     st.session_state.search_query = ""
 
-# Kontakte beim Laden der Seite abrufen (hier direkt nach der Initialisierung)
-if "contacts" not in st.session_state or not st.session_state.contacts:
-    try:
-        # Lade Kontakte aus der Datenbank
-        db_contacts = controller.get_contacts()
-        
-        # Falls Kontakte aus der Datenbank geladen wurden, speichere sie im Session-Status
-        if db_contacts:
-            st.session_state.contacts = {contact.email_address: contact.name for contact in db_contacts}
-        else:
-            st.session_state.contacts = {}  # Leeres Dictionary, falls keine Kontakte vorhanden sind
-        
-    except Exception as e:
-        st.error(f"Fehler beim Abrufen der Kontakte: {str(e)}")
-
-
+st.set_page_config(page_title="Remail", layout="wide")
 
 
 # New Mail
@@ -114,7 +109,7 @@ def add_email_form():
 
 if "email_sent" in st.session_state and st.session_state.pop(
     "email_sent"
-):  
+):  # Rerun-Trigger
     st.rerun()
 
 if "cancel_email" in st.session_state and st.session_state.pop("cancel_email"):
@@ -125,35 +120,23 @@ if "cancel_email" in st.session_state and st.session_state.pop("cancel_email"):
 def new_contact_form():
     st.subheader("Add new contact")
     contact_name = st.text_input("Name:", key="contact_name_input")
-    #contact_surname = st.text_input("Surname:", key="contact_surname_input")
+    contact_surname = st.text_input("Surname:", key="contact_surname_input")
     email_address = st.text_input("E-Mail address:", key="email_address_input")
 
     col1, col2 = st.columns([1, 1])
     with col1:
         if st.button("Create new contact", key="create_contact_button"):
-            if contact_name and email_address:
-                full_name = f"{contact_name}"
-                try:
-                    # Speichern des neuen Kontakts in der Datenbank
-                    contact = controller.create_contact(email_address=email_address, name=full_name)
-                    
-                    # Kontakte nach dem Erstellen erneut laden und in Session speichern
-                    db_contacts = controller.get_contacts()
-                    st.session_state.contacts = {contact.email_address: contact.name for contact in db_contacts}
-                    
-                    st.success(f"Created contact {full_name} with email {email_address}")
-                    st.session_state.selected_sender = None
-                    #st.rerun() # Wichtig für die Aktualisierung der Kontaktliste
-                except ValueError as e:
-                    st.error(str(e))
-                except RuntimeError as e:  # Fange Runtime Errors ab
-                    st.error(f"An unexpected error has occurred: {e}")
+            if contact_name and contact_surname and email_address:
+                st.session_state.contacts[email_address] = contact_name
+                st.success(
+                    f"Created contact {contact_name,contact_surname} with email {email_address}"
+                )
+                st.rerun()
             else:
                 st.error("Please fill out all required fields.")
     with col2:
-        if st.button("Cancel", key="cancel_contact_button"):
+        if st.button("Cancel", key="cancel_contact_button"):  # Eindeutige Keys
             st.rerun()
-
 
 
 def send_message_to_sender(sender, message):
@@ -164,8 +147,9 @@ def send_message_to_sender(sender, message):
 
 
 # Layout
-empty_col1, col1, empty_col2, col2, empty_col3, col3, empty_col4 = st.columns([1, 8, 2, 8, 2, 8, 1])
-
+empty_col1, col1, empty_col2, col2, empty_col3, col3, empty_col4 = st.columns(
+    [0.5, 1, 1, 2, 1, 3, 0.5]
+)
 
 with st.sidebar:
     st.header("Emails")
@@ -175,14 +159,9 @@ with st.sidebar:
     st.header("Contacts")
     with st.expander("New Contact"):
         new_contact_form()
-    try:
-        # Lade Kontakte aus der Datenbank
-        db_contacts = controller.get_contacts()
-        
-    except Exception as e:
-        st.error(f"Error fetching contacts: {str(e)}")
 
-    
+    for email, name in st.session_state.contacts.items():
+        st.write(f"{name} ({email})")
 
 with col1:
     st.subheader("Inbox")
@@ -195,56 +174,40 @@ with col1:
     )
 
     # Sender sortieren basierend auf Filter
-    contacts = list(st.session_state.contacts.items())
+    senders = list(emails_data.keys())
     if st.session_state.filter_option == "Urgency":
-        contacts = sorted(
-            contacts,
-            key=lambda contact: random.randint(1, 5),
+        senders = sorted(
+            senders,
+            key=lambda sender: max(
+                (msg.get("urgency", 0) for msg in emails_data[sender]), default=0
+            ),
             reverse=True,
         )
     elif st.session_state.filter_option == "Date":
-        contacts = sorted(contacts, key=lambda contact: time.time(), reverse=True)
+        senders = sorted(
+            senders,
+            key=lambda sender: max(
+                (msg.get("date", "") for msg in emails_data[sender]), default=""
+            ),
+            reverse=True,
+        )
 
+    # Sender filtern basierend auf Suchanfrage
     search_query = st.session_state.search_query.lower()
     if search_query:
-        contacts = [
-            contact for contact in contacts
-            if search_query in contact[0].lower() or search_query in contact[1].lower()
-        ]
+        senders = [sender for sender in senders if search_query in sender.lower()]
 
-
-    # Kontakte anzeigen
-    for email, name in contacts:
-        if st.button(name, key=f"contact_button_{email}"):
-            st.session_state.selected_sender = email
+    # Sender-Liste anzeigen
+    for sender in senders:
+        if st.button(sender, key=f"sender_button_{sender}"):
+            st.session_state.selected_sender = sender
 
 
 with col2:
     selected_sender = st.session_state.get("selected_sender")
 
     if selected_sender:
-        insideCol1, insideCol2 = st.columns([1, 2])
-        with insideCol1:
-            # Profile Picture
-            st.markdown(
-                f"""
-                <div style="margin: 0; padding: 0;">  <svg width="100%" height="100%" viewBox="0 0 100 100" style="max-width: 50px;"><circle cx="50" cy="50" r="40" fill="#f0f0f0" />
-                        <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-size="40" fill="#333" font-weight="bold">{st.session_state.contacts[selected_sender][:2].upper()}</text>
-                    </svg>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-        with insideCol2:
-            # Chat name
-            st.markdown(
-                f"""
-                <div style="display: flex; align-items: center; justify-content: flex-start; height: 50px; margin: 0; padding: 0;"> <span style="white-space: nowrap;">{st.session_state.contacts[selected_sender]}</span>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
- 
+        st.subheader(f"Chat mit {selected_sender}")
         chat_history = st.session_state.chat_history.get(selected_sender, [])
 
         # Initialisiere den Zeitstempel für die letzte Nachricht, falls noch nicht vorhanden
@@ -255,7 +218,9 @@ with col2:
 
         # Simuliere das Eintreffen neuer Nachrichten
         time_diff = time.time() - st.session_state.last_message_time[selected_sender]
-        if time_diff > random.randint(3, 7):  # Zufälliges Intervall zwischen 3 und 7 Sekunden
+        if time_diff > random.randint(
+            3, 7
+        ):  # Zufälliges Intervall zwischen 3 und 7 Sekunden
             new_message = f"Automatische Nachricht um {time.strftime('%H:%M:%S')}"
             chat_history.append({"type": "received", "message": new_message})
             st.session_state.last_message_time[selected_sender] = time.time()
@@ -266,26 +231,8 @@ with col2:
 
             # Überprüfe, ob die Nachricht existiert und zeige sie an
             if "message" in chat:
-                message_display = chat['message']
-                # Chatbubble design reciver and sender
-                if chat["type"] == "received":
-                    st.markdown(
-                        f"""
-                        <div style="display: flex; flex-direction: row;"> 
-                            <span style="background: linear-gradient(to bottom, #c9d6ff, #e2e2e2); border-radius: 15px; padding: 0px 5px 0px 5px; display: inline-block; max-width: 100%; overflow-wrap: break-word;">{message_display}</span>
-                        </div>
-                        """,
-                        unsafe_allow_html=True,
-                    )
-                else:
-                    st.markdown(
-                        f"""
-                        <div style="color: white; display: flex; flex-direction: row-reverse;"> 
-                            <span style="background: linear-gradient(135deg, rgb(0, 178, 255) 0%, rgb(0, 106, 255) 100%); border-radius: 15px; padding: 0px 5px 0px 5px; display: inline-block; max-width: 100%; overflow-wrap: break-word;">{message_display}</span>
-                        </div>
-                        """,
-                        unsafe_allow_html=True,
-                    )
+                message_display = f"{sender_display}: {chat['message']}"
+                st.markdown(message_display, unsafe_allow_html=True)
 
             # Überprüfe, ob eine Datei angehängt ist und zeige sie an
             if "file_name" in chat:
@@ -322,7 +269,9 @@ with col2:
             "Datei anhängen", key=f"file_uploader_{selected_sender}"
         )
 
-        if st.button(f"Senden an {selected_sender}", key=f"send_message_{selected_sender}"):
+        if st.button(
+            f"Senden an {selected_sender}", key=f"send_message_{selected_sender}"
+        ):
             # Sicherstellen, dass entweder eine Nachricht oder eine Datei vorhanden ist
             if new_message.strip() or uploaded_file:
                 message_data = {"type": "sent"}
@@ -339,7 +288,9 @@ with col2:
                     st.write(f"Datei '{uploaded_file.name}' wurde angehängt.")
 
                 # Chatverlauf aktualisieren
-                st.session_state.chat_history.setdefault(selected_sender, []).append(message_data)
+                st.session_state.chat_history.setdefault(selected_sender, []).append(
+                    message_data
+                )
                 st.rerun()
             else:
                 st.error("Bitte gib eine Nachricht ein oder hänge eine Datei an.")
