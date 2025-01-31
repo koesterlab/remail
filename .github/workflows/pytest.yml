@@ -26,6 +26,10 @@ jobs:
         python -m pip install --upgrade pip
         pip install poetry  # Installiere Poetry
 
+    - name: Configure Poetry
+      run: |
+        poetry config virtualenvs.in-project true  # Setzt virtuelle Umgebung ins Projektverzeichnis
+
     - name: Install dependencies with Poetry
       run: | 
         poetry install --no-interaction --no-root  # Installiere alle Dependencies
