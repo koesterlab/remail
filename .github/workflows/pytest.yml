@@ -27,7 +27,3 @@ jobs:
         job-summary: true
         verbose: true
         emoji: true
-        custom-arguments: ""
-        custom-pytest: pytest
-        report-title: "Test Report"
-        click-to-expand: true
