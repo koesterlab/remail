@@ -23,8 +23,8 @@ jobs:
 
     - name: Install Poetry
       run: |
-        curl -sSL https://install.python-poetry.org | python3 -
-        echo "$HOME/.local/bin" >> $GITHUB_PATH
+        python -m pip install --upgrade pip
+        pip install poetry  # Installiere Poetry
 
     - name: Install dependencies with Poetry
       run: |
