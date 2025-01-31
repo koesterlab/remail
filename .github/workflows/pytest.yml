@@ -23,7 +23,7 @@ jobs:
         path: .venv  # Speicherort der virtuellen Umgebung von Poetry
         key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
         restore-keys: |
-          ${{ runner.os }}-poetry-
+          ${{ runner.os }}-poetry- 
 
     - name: Install Poetry
       run: |  
