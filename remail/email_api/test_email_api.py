@@ -1,3 +1,8 @@
+import sys, os
+print(sys.path)
+print(os.getcwd())
+print(os.listdir("."))
+
 from remail.database.models import Email, EmailReception, Contact, RecipientKind
 from remail.email_api.service import ImapProtocol, ExchangeProtocol
 import remail.email_api.credentials_helper as ch
