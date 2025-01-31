@@ -1,47 +1,15 @@
 from sqlmodel import Session, select, create_engine
-from remail.database.models import (
-    Email,
-    Contact,
-    EmailReception,
-    RecipientKind,
-    Attachment,
-    User,
-    Protocol,
-)
+from database.models import Email, Contact, EmailReception, RecipientKind, Attachment
 from datetime import datetime
 import duckdb
 import logging
 from sqlmodel import SQLModel
-from remail.email_api.service import ImapProtocol, ExchangeProtocol, ProtocolTemplate
-import remail.email_api.email_errors as errors
-import keyring
-from tzlocal import get_localzone
-import threading
-
-
-def error_handler(func):
-    def wrapper(*args, **kwargs):
-        try:
-            return func(*args, **kwargs)
-        except errors.InvalidLoginData:
-            logging.error(
-                "Fehler beim Aktualisieren der E-Mails: Ungültige Anmeldedaten"
-            )
-        except errors.ServerConnectionFail:
-            logging.error(
-                "Fehler beim Aktualisieren der E-Mails: Serververbindung fehlgeschlagen"
-            )
-        except Exception as e:
-            logging.error(e, exc_info=True)
-            logging.error("Fehler beim Aktualisieren der E-Mails")
-
-    return wrapper
 
 
 class EmailController:
     def __init__(self):
         # Connect to the DuckDB database (will create a file-based database if it doesn't exist)
-        conn = duckdb.connect("database.db")
+        conn = duckdb.connect('database.db')
         conn.close()
 
         engine = create_engine("duckdb:///database.db")
@@ -340,41 +308,24 @@ class EmailController:
 
     def create_contact(self, email_address: str, name: str = None):
         """Erstellt einen neuen Kontakt."""
-        try:
-            with Session(self.engine) as session:
-                existing_contact = session.exec(
-                    select(Contact).where(Contact.email_address == email_address)
-                ).first()
-                if existing_contact:
-                    raise ValueError(
-                        f"Kontakt mit E-Mail {email_address} existiert bereits."
-                    )
-
-                contact = Contact(email_address=email_address, name=name)
-                session.add(contact)
-                session.commit()
-                return contact
-        except Exception as e:
-            raise e
-
-    def change_name_Contact(self, email_address: str, name: str):
-        """Change the name of a Contact with a specific email_address"""
         with Session(self.engine) as session:
-            contact = session.exec(
-                select(Contact).where(Contact.email_address == email_address)
-            ).first()
-            if not contact:
-                raise ValueError(f"Kontakt mit E-Mail {email_address} existiert nicht.")
-            contact.name = name
+            existing_contact = session.exec(select(Contact).where(Contact.email_address == email_address)).first()
+            if existing_contact:
+                raise ValueError(f"Kontakt mit E-Mail {email_address} existiert bereits.")
+
+            contact = Contact(email_address=email_address, name=name)
+            session.add(contact)
             session.commit()
-            session.refresh(contact)
+            # self.logger.info(f"Kontakt erstellt: {name} ({email_address})")
 
     def get_contacts(self):
         """Gibt alle Kontakte aus."""
         with Session(self.engine) as session:
             contacts = session.exec(select(Contact)).all()
-            # self.logger.info(f"{len(contacts)} Kontakte gefunden.")
+            #print(f"Contacts loaded: {contacts}")  # Debug-Ausgabe
             return contacts
+        
+    
 
     def get_contact(self, email: str, name: str = None) -> Contact:
         """Gibt den Kontakt mit der Emailadresse zurück oder erstellt einen neuen"""
@@ -453,3 +404,7 @@ class EmailController:
 
 
 controller = EmailController()
+
+
+# ret = controller.create_email("yasin.arazay@gmail.com", ["recipient@gmail.com"], "Generic Subject", "HELLLO")
+# print(ret)
